@@ -1,0 +1,221 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap');
+
+body {
+  height: 100vh;
+  background: #F5F0E8;
+  font-family: 'Quicksand', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 380px;
+}
+
+.login-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #9b4f08;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: -36px;
+  z-index: 2;
+  position: relative;
+}
+
+.login-avatar svg {
+  width: 32px;
+  height: 32px;
+  fill: #F5F0E8;
+}
+
+.login-title {
+  font-family: 'Quicksand', sans-serif !important;
+  font-size: 1.75rem;
+  font-weight: 300;
+  color: #1C1C1C;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.login-sub {
+  font-size: 15px;
+  color: #888;
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: 0.03em;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.login-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.login-input:focus {
+  border-color: #996c0b;
+  background: #FFF;
+  box-shadow: 3px 3px 0 #e2d8d8;
+}
+
+.login-input {
+  padding: 11px 14px !important;
+  box-sizing: border-box;
+}
+
+.login-error {
+  font-size: 12px;
+  color: #B84040;
+  text-align: center;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: #FDF0F0;
+  border: 1px solid #F0C0C0;
+  border-radius: 2px;
+}
+
+.login-divider {
+  height: 1px;
+  background: #EDE8E0;
+  margin: 16px 0;
+}
+
+.login-button:hover { box-shadow: 4px 4px 0 #dad6cb; }
+.login-button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #8B7355; }
+
+.login-footer {
+  font-size: 12px;
+  color: #AAA;
+  text-align: center;
+  margin-top: 16px;
+}
+
+.login-label-outside {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #140c01;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.login-label-outside:last-of-type {
+  margin-top: 1px;
+}
+
+.login-panel {
+  width: 420px;
+  background: #faf9f7;
+  border: 1px solid #d4d0c8;
+  border-radius: 10px;
+  padding: 3rem 2.75rem;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.10),
+    0 2px 8px  rgba(0, 0, 0, 0.07);
+}
+
+
+.login-field {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
+
+.login-input {
+  width: 100%;
+  padding: 1rem 0.85rem 0.35rem 0.85rem;
+  background: #fff;
+  border: 1px solid #c8c4bc;
+  border-radius: 6px;
+  color: #1a1a1a;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.login-button {
+  width: 100%;
+  padding: 0.85rem;
+  margin-top: 0.25rem;
+  background: #1a1a1a;
+  color: #f4f2ee;
+  border: none;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.1s;
+}
+
+@media (max-width: 480px) {
+  .login-panel {
+    width: 100%;
+    margin: 1.5rem;
+    padding: 2.25rem 1.75rem;
+  }
+}
+
+.login-wrapper {
+  min-height: 100vh;
+  background: #f4f2ee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* ── Campo de contraseña con ojito ── */
+.password-field {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  transition: color 0.2s;
+}
+
+.password-toggle:hover {
+  color: #9f6309;
+}
+
+.password-toggle svg {
+  fill: currentColor;
+}
