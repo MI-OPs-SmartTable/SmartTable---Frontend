@@ -1,5 +1,8 @@
 import type { Categoria, Insumo, Producto } from "../pages/dashboard/types/productos.types";
 
+// EJEMPLO DE PRODUCTOS PARA LA SECCION DE PRODUCTOS :V
+
+
 export const CATEGORIAS_SEED: Categoria[] = [
   { id: "c1", nombre: "Comidas Rápidas", color: "#e8601c", emoji: "🍔" },
   { id: "c2", nombre: "Platos del Día",  color: "#2d7a4f", emoji: "🍽️" },

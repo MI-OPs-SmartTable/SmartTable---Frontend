@@ -1,5 +1,5 @@
 // ============================================
-// CONFIRMACIÓN DE ELIMINACIÓN
+// CONFIRMACIÓN DE ELIMINACIÓN DE PRODUCTO
 // ============================================
 
 const I = {

@@ -1,3 +1,5 @@
+// TIPOS DE PRODUCTOS PARA LA SECCION DE PRODUCTOS
+
 export type Categoria = {
   id: string;
   nombre: string;

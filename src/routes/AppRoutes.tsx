@@ -5,6 +5,7 @@ import DashboardHome from "../pages/dashboard/DashboardHome";
 import VentasPOS from "../pages/dashboard/VentasPOS";
 import Productos from "../pages/dashboard/Productos";
 import Caja from "../pages/dashboard/Caja";
+import Configuracion from "../pages/dashboard/configuracion";  // 👈 c minúscula
 
 const AppRoutes = () => {
   return (
@@ -18,6 +19,7 @@ const AppRoutes = () => {
           <Route path="ventas" element={<VentasPOS />} />
           <Route path="productos" element={<Productos />} />
           <Route path="caja" element={<Caja />} />
+          <Route path="configuracion" element={<Configuracion />} />
         </Route>
       </Routes>
     </BrowserRouter>

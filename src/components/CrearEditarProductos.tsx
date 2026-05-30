@@ -1,5 +1,5 @@
 // ============================================
-// MODAL CREAR/EDITAR PRODUCTO
+// CREAR/EDITAR PRODUCTO
 // ============================================
 
 import { useState, useRef, useEffect } from "react";

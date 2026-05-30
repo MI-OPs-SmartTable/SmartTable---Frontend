@@ -1,4 +1,4 @@
-// Cambiar estas importaciones:
+
 import type { Producto, Categoria, Insumo } from "../pages/dashboard/types/productos.types";
 import { CATEGORIAS_SEED, INSUMOS_SEED, PRODUCTOS_SEED } from "../data/seedData"
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
