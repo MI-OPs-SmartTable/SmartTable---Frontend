@@ -11,27 +11,23 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 // MANEJO DE SESIÓN (localStorage)
 // ============================================
 
-// Guardar sesión con token y expiración
 export function saveSession(token: string, expiresIn: number) {
   const exp = Date.now() + expiresIn * 1000;
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(TOKEN_EXP, String(exp));
 }
 
-// Limpiar sesión (logout)
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_EXP);
 }
 
-// Verificar si la sesión es válida
 export function isSessionValid(): boolean {
   const token = localStorage.getItem(TOKEN_KEY);
   const exp = Number(localStorage.getItem(TOKEN_EXP) || 0);
   return !!token && Date.now() < exp;
 }
 
-// Obtener token almacenado
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -48,18 +44,28 @@ export function validateLogin(username: string, password: string) {
 }
 
 // ============================================
+// VALIDACIÓN DE PIN (4 DÍGITOS)
+// ============================================
+export function validatePin(pin: string) {
+  const errs: { pin?: string } = {};
+  if (!pin) errs.pin = "Campo requerido";
+  else if (!/^\d{4}$/.test(pin)) errs.pin = "El PIN debe tener exactamente 4 dígitos numéricos";
+  return errs;
+}
+
+// ============================================
 // USUARIOS DISPONIBLES (para selector)
 // ============================================
 export const AVAILABLE_USERS = [
-  { id: "1", username: "cajero", nombre: "Cajero" },
-  { id: "2", username: "mesero", nombre: "Mesero" },
-  { id: "3", username: "administrador", nombre: "Administrador" },
+  { id: "1", username: "cajero", nombre: "Cajero", pin: "1234" },  // 👈 PIN agregado
+  { id: "2", username: "mesero", nombre: "Mesero", pin: "5678" },    // 👈 PIN agregado
+  { id: "3", username: "administrador", nombre: "Administrador", pin: "9012" }, // 👈 PIN agregado
 ];
 
 // ============================================
 // LOGIN - CONEXIÓN CON BASE DE DATOS
 // ============================================
-export async function apiLogin(username: string, password: string): Promise<LoginResponse> {
+export async function apiLogin(username: string, pin: string): Promise<LoginResponse> {
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
@@ -67,15 +73,15 @@ export async function apiLogin(username: string, password: string): Promise<Logi
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        username: username,  // Envía username para login
-        password: password,
+        username: username,
+        pin: pin,  // 👈 Cambiado de password a pin
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Credenciales incorrectas");
+      throw new Error(data.message || "PIN incorrecto");
     }
 
     if (data.token) {
@@ -99,9 +105,16 @@ export async function apiLogin(username: string, password: string): Promise<Logi
 }
 
 // ============================================
+// VERIFICAR PIN (local - sin backend)
+// ============================================
+export function verifyPin(username: string, pin: string): boolean {
+  const user = AVAILABLE_USERS.find(u => u.username === username);
+  return user?.pin === pin;
+}
+
+// ============================================
 // RECUPERAR CONTRASEÑA - CONEXIÓN CON BASE DE DATOS
 // ============================================
-
 export async function apiForgotPassword(email: string) {
   try {
     const response = await fetch(`${API_URL}/auth/forgot-password`, {
@@ -110,7 +123,7 @@ export async function apiForgotPassword(email: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: email,  
+        email: email,
       }),
     });
 

@@ -4,6 +4,7 @@ import {
   saveSession, 
   clearSession, 
   validateLogin,
+  validatePin,
   apiLogin, 
   apiForgotPassword,
   AVAILABLE_USERS  
@@ -11,7 +12,7 @@ import {
 import "../styles/LoginPage.css";
 
 // ============================================
-// PAGINA DE LOGIN
+// ICONOS (mantienen igual)
 // ============================================
 const IconLock = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -144,14 +145,15 @@ function ForgotModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (v:
 export default function LoginPage() {
   const navigate = useNavigate();  
   const [selectedUser, setSelectedUser] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPw, setShowPw] = useState(false);
+  const [pin, setPin] = useState("");  
+  const [showPin, setShowPin] = useState(false);  
   const [loading, setLoading] = useState(false);
-  const [fieldErrs, setFieldErrs] = useState<{ username?: string; password?: string }>({});
+  const [fieldErrs, setFieldErrs] = useState<{ username?: string; pin?: string }>({});  
   const [banner, setBanner] = useState<{ type: "err" | "ok"; msg: string } | null>(null);
   const [showForgot, setShowForgot] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const selectRef = useRef<HTMLDivElement>(null);
+  const pinRef = useRef<HTMLInputElement>(null);  
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -164,29 +166,43 @@ export default function LoginPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Enfocar el PIN cuando se selecciona un usuario
+  useEffect(() => {
+    if (selectedUser) {
+      pinRef.current?.focus();
+    }
+  }, [selectedUser]);
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setBanner(null);
     
-    const errs = validateLogin(selectedUser, password);
-    setFieldErrs(errs);
-    if (Object.keys(errs).length) return;
+    // Validar usuario
+    const userErr = validateLogin(selectedUser, pin);
+    const pinErr = validatePin(pin);
+    
+    setFieldErrs({
+      username: userErr.username,
+      pin: pinErr.pin
+    });
+    
+    if (userErr.username || pinErr.pin) return;
 
     setLoading(true);
     try {
-      const data = await apiLogin(selectedUser, password);
+      const data = await apiLogin(selectedUser, pin);  
       saveSession(data.token, data.expiresIn);
-      setBanner({ type: "ok", msg: `✅ ¡Bienvenido, ${data.user.nombre}! Login exitoso.` });
+      setBanner({ type: "ok", msg: `¡Bienvenido, ${data.user.nombre}!` });
       
-      // 👈 CAMBIAR window.location.href POR navigate
       setTimeout(() => {
         navigate("/dashboard");
       }, 1000);
       
     } catch (err: any) {
       clearSession();
-      setBanner({ type: "err", msg: err.message || "❌ Error de autenticación." });
-      setPassword("");
+      setBanner({ type: "err", msg: err.message || "❌ PIN incorrecto" });
+      setPin("");
+      pinRef.current?.focus();
     } finally {
       setLoading(false);
     }
@@ -195,6 +211,7 @@ export default function LoginPage() {
   const handleForgot = async (val: string) => {
     await apiForgotPassword(val);
   };
+  
   const selectedUserData = AVAILABLE_USERS.find(u => u.username === selectedUser);
 
   return (
@@ -231,7 +248,7 @@ export default function LoginPage() {
                 Inicia <span>sesión</span>
               </h2>
               <p className="pl-form-desc">
-                Selecciona tu usuario e ingresa tu contraseña.
+                Selecciona tu usuario e ingresa tu PIN de acceso.
               </p>
             </header>
 
@@ -281,34 +298,42 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* CAMPO CONTRASEÑA */}
+              {/* CAMPO PIN - 4 DÍGITOS NUMÉRICOS */}
               <div className="pl-field">
-                <label className="pl-label" htmlFor="pos-pw">Contraseña</label>
+                <label className="pl-label" htmlFor="pos-pin">PIN de acceso (4 dígitos)</label>
                 <div className="pl-input-wrap">
                   <input
-                    id="pos-pw"
-                    className={`pl-input${fieldErrs.password ? " err" : ""}`}
-                    type={showPw ? "text" : "password"}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    value={password}
+                    ref={pinRef}
+                    id="pos-pin"
+                    className={`pl-input${fieldErrs.pin ? " err" : ""}`}
+                    type={showPin ? "text" : "password"}
+                    inputMode="numeric"
+                    pattern="\d*"
+                    maxLength={4}
+                    placeholder="****"
+                    autoComplete="off"
+                    value={pin}
                     disabled={loading || !selectedUser}
-                    onChange={(e) => { setPassword(e.target.value); setFieldErrs(p => ({...p, password: undefined})); }}
-                    style={{ paddingRight: 44 }}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      setPin(value);
+                      setFieldErrs(p => ({...p, pin: undefined}));
+                    }}
+                    style={{ paddingRight: 44, textAlign: "center", letterSpacing: "4px", fontSize: "18px" }}
                   />
                   <span className="pl-input-icon"><IconLock /></span>
                   <button
                     type="button"
                     className="pl-eye"
                     tabIndex={-1}
-                    onClick={() => setShowPw(v => !v)}
+                    onClick={() => setShowPin(v => !v)}
                     disabled={!selectedUser}
                   >
-                    <IconEye open={showPw} />
+                    <IconEye open={showPin} />
                   </button>
                 </div>
-                {fieldErrs.password && (
-                  <div className="pl-field-err"><IconAlert />{fieldErrs.password}</div>
+                {fieldErrs.pin && (
+                  <div className="pl-field-err"><IconAlert />{fieldErrs.pin}</div>
                 )}
               </div>
 
