@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { LockIcon } from "../../components/icons/LockIcon";
 import CajaEstado from "../../components/CajaEstado";
+import CajaActiva from "../../components/CajaActiva";
 import CajaHistorial from "../../components/CajaHistorial";
 import AperturaCajaModal from "../../components/AperturaCajaModal";
 import type { CierreCaja } from "./types/caja.types";
@@ -14,9 +15,10 @@ const HISTORIAL: CierreCaja[] = [
 export default function Caja() {
   const [cajaAbierta, setCajaAbierta] = useState(false);
   const [showAperturaModal, setShowAperturaModal] = useState(false);
+  const [baseInicial, setBaseInicial] = useState(0);
 
   const handleAbrirCaja = (dineroBase: number) => {
-    console.log("Caja abierta con base:", dineroBase);
+    setBaseInicial(dineroBase);
     setCajaAbierta(true);
     setShowAperturaModal(false);
   };
@@ -29,9 +31,9 @@ export default function Caja() {
           <p>Control de apertura, ventas y cierre de caja</p>
         </div>
         {!cajaAbierta ? (
-          <button className="caja-btn-abrir" onClick={() => setShowAperturaModal(true)}>
+          <button className="caja-btn-abrir" style={{ backgroundColor: '#ef4444' }}>
             <LockIcon size={16} color="#fff" />
-            Abrir Caja
+            Caja Cerrada
           </button>
         ) : (
           <button className="caja-btn-abrir" style={{ backgroundColor: '#ef4444' }} onClick={() => setCajaAbierta(false)}>
@@ -41,11 +43,15 @@ export default function Caja() {
         )}
       </div>
 
-      <CajaEstado
-        cajaAbierta={cajaAbierta}
-        onAbrir={() => setShowAperturaModal(true)}
-        onCerrar={() => setCajaAbierta(false)}
-      />
+      {!cajaAbierta ? (
+        <CajaEstado
+          cajaAbierta={cajaAbierta}
+          onAbrir={() => setShowAperturaModal(true)}
+          onCerrar={() => setCajaAbierta(false)}
+        />
+      ) : (
+        <CajaActiva baseInicial={baseInicial} />
+      )}
 
       <CajaHistorial historial={HISTORIAL} />
 

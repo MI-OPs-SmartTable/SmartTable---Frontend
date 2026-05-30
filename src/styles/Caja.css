@@ -50,8 +50,8 @@
 }
 
 .caja-estado.cerrada {
-  background-color: #fffbeb;
-  border: 1.5px solid #fde68a;
+  background-color: #ffffff;
+  border: 1px dashed #e5e7eb;
 }
 
 .caja-estado.abierta {
@@ -107,6 +107,214 @@
 }
 
 .caja-btn-accion.cerrar:hover { background-color: #dc2626; }
+
+/* ── CajaActiva ────────────────────────────────────────────────── */
+.caja-activa {
+  margin-bottom: 32px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.caja-activa-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.caja-activa-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.caja-activa-status p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.caja-activa-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.caja-metric-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.caja-metric-card.ven {
+  background-color: #f0fdf4;
+  border-color: #dcfce7;
+}
+
+.caja-metric-card.gas {
+  background-color: #fef2f2;
+  border-color: #fee2e2;
+}
+
+.caja-metric-card.neto {
+  background-color: #eff6ff;
+  border-color: #dbeafe;
+}
+
+.caja-metric-title {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.caja-metric-icon {
+  font-size: 14px;
+}
+
+.caja-metric-value {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.caja-metric-value.success {
+  color: #10b981;
+}
+
+.caja-metric-value.error {
+  color: #ef4444;
+}
+
+.caja-metric-value.primary {
+  color: #3b82f6;
+}
+
+.caja-activa-methods {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.caja-method-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.caja-method-title {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.caja-method-value {
+  margin: 0 0 4px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.caja-method-transactions {
+  margin: 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.caja-activa-sections {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.caja-section-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.caja-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.caja-section-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.caja-eye-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.caja-eye-btn:hover {
+  color: #3b82f6;
+}
+
+.caja-add-btn {
+  background: none;
+  border: none;
+  color: #f59e0b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.caja-add-btn:hover {
+  color: #d97706;
+}
+
+.caja-section-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.caja-section-body.empty p {
+  margin: 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
 
 /* ── CajaHistorial ─────────────────────────────────────────────── */
 .caja-historial {
