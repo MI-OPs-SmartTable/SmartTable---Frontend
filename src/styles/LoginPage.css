@@ -550,3 +550,23 @@ html, body { height: 100%; background: var(--cream); }
   font-family: 'Figtree', sans-serif !important;
   font-size: 14px;
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+.pl-select-option-role {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--orange);
+  margin-bottom: 4px;
+}
+
+.pl-select-option-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--bark);
+}

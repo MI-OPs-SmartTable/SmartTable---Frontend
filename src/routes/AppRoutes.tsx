@@ -5,7 +5,37 @@ import DashboardHome from "../pages/dashboard/DashboardHome";
 import VentasPOS from "../pages/dashboard/VentasPOS";
 import Productos from "../pages/dashboard/Productos";
 import Caja from "../pages/dashboard/Caja";
-import Configuracion from "../pages/dashboard/configuracion";  // 👈 c minúscula
+import Configuracion from "../pages/dashboard/configuracion";
+
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;  
+  allowedRoles: string[];
+}
+
+function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+  const token = localStorage.getItem("pos_auth_token");
+  
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  try {
+
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const userRole = payload.rol;
+    
+    if (!allowedRoles.includes(userRole)) {
+      
+      return <Navigate to="/dashboard" replace />;
+    }
+  } catch (error) {
+    console.error("Error decodificando token:", error);
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+}
 
 const AppRoutes = () => {
   return (
@@ -17,9 +47,27 @@ const AppRoutes = () => {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="ventas" element={<VentasPOS />} />
-          <Route path="productos" element={<Productos />} />
-          <Route path="caja" element={<Caja />} />
-          <Route path="configuracion" element={<Configuracion />} />
+          
+          {/* Solo admin puede ver productos */}
+          <Route path="productos" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Productos />
+            </ProtectedRoute>
+          } />
+          
+          {/* Admin y cajero pueden ver caja */}
+          <Route path="caja" element={
+            <ProtectedRoute allowedRoles={["admin", "cajero"]}>
+              <Caja />
+            </ProtectedRoute>
+          } />
+          
+          {/* Solo admin puede ver configuración */}
+          <Route path="configuracion" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Configuracion />
+            </ProtectedRoute>
+          } />
         </Route>
       </Routes>
     </BrowserRouter>

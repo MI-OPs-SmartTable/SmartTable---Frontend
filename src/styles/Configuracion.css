@@ -1,6 +1,3 @@
-/* ============================================
-   CONFIGURACIÓN 
-   ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,500;1,300&display=swap');
 
@@ -707,4 +704,22 @@ body {
   .cfg-tags {
     justify-content: center;
   }
+}
+
+/* Cambiar título de Configuración a la misma fuente que el dashboard */
+.cfg-title {
+  font-family: 'Figtree', sans-serif !important;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--bark);
+  letter-spacing: -0.3px;
+  margin-bottom: 4px;
+}
+
+.cfg-sub {
+  font-family: 'Figtree', sans-serif !important;
+  font-size: 13px;
+  color: var(--ash);
+  margin-top: 3px;
+  margin-bottom: 28px;
 }

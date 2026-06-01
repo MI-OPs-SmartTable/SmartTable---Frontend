@@ -5,7 +5,7 @@ import type { LoginResponse } from "./authTypes";
 // ============================================
 const TOKEN_KEY = "pos_auth_token";
 const TOKEN_EXP = "pos_auth_exp";
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const API_URL = "https://smarttable-backend-njq0.onrender.com/api";
 
 // ============================================
 // MANEJO DE SESIÓN (localStorage)
@@ -57,14 +57,13 @@ export function validatePin(pin: string) {
 // USUARIOS DISPONIBLES (para selector)
 // ============================================
 export const AVAILABLE_USERS = [
-  { id: "1", username: "cajero", nombre: "Cajero", pin: "1234" },  // 👈 PIN agregado
-  { id: "2", username: "mesero", nombre: "Mesero", pin: "5678" },    // 👈 PIN agregado
-  { id: "3", username: "administrador", nombre: "Administrador", pin: "9012" }, // 👈 PIN agregado
+  { id: "16151ab6fdb64b41a0b7c105f34cd158", username: "Admin Nathalia", nombre: "Admin Nathalia", pin: "1234" },
+  { id: "162441725c614d008ecc699e9e683ca1", username: "Admin Principal Lina", nombre: "Admin Principal Lina", pin: "1234" },
+  { id: "45f3dca8b4794f20b159b3f70d6787ec", username: "Cajero Santiago", nombre: "Cajero Santiago", pin: "1234" },
+  { id: "0a748b8dc1f14020a6d77f74a60ac108", username: "Mesero Carlos", nombre: "Mesero Carlos", pin: "1234" },
 ];
 
-// ============================================
-// LOGIN - CONEXIÓN CON BASE DE DATOS
-// ============================================
+
 export async function apiLogin(username: string, pin: string): Promise<LoginResponse> {
   try {
     const response = await fetch(`${API_URL}/auth/login`, {
@@ -73,15 +72,16 @@ export async function apiLogin(username: string, pin: string): Promise<LoginResp
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        username: username,
-        pin: pin,  // 👈 Cambiado de password a pin
+        nombre_completo: username,
+        pin: pin,
       }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "PIN incorrecto");
+ 
+      throw new Error("Credenciales incorrectas");
     }
 
     if (data.token) {
@@ -92,29 +92,30 @@ export async function apiLogin(username: string, pin: string): Promise<LoginResp
       token: data.token,
       expiresIn: data.expiresIn || 28800,
       user: {
-        id: data.user.id,
-        nombre: data.user.nombre,
-        rol: data.user.rol,
-        email: data.user.email || `${username}@pos.com`,
+        id: data.usuario?.id || `u${Date.now()}`,
+        nombre: data.usuario?.nombre_completo || username,
+        rol: data.usuario?.rol || "cajero",
+        email: "",
       },
     };
   } catch (error: any) {
-    console.error("Error en login:", error);
-    throw new Error(error.message || "Error de conexión con el servidor");
+ 
+    if (import.meta.env.DEV && error.message !== "Credenciales incorrectas") {
+      console.error("Error en login:", error);
+    }
+    throw new Error("Credenciales incorrectas");
   }
 }
 
-// ============================================
-// VERIFICAR PIN (local - sin backend)
-// ============================================
+
 export function verifyPin(username: string, pin: string): boolean {
   const user = AVAILABLE_USERS.find(u => u.username === username);
   return user?.pin === pin;
 }
 
-// ============================================
+
 // RECUPERAR CONTRASEÑA - CONEXIÓN CON BASE DE DATOS
-// ============================================
+
 export async function apiForgotPassword(email: string) {
   try {
     const response = await fetch(`${API_URL}/auth/forgot-password`, {
@@ -135,7 +136,10 @@ export async function apiForgotPassword(email: string) {
 
     return data;
   } catch (error: any) {
-    console.error("Error en forgot password:", error);
-    throw new Error(error.message || "Error de conexión con el servidor");
+    // No mostrar error detallado en consola
+    if (import.meta.env.DEV) {
+      console.error("Error en forgot password:", error);
+    }
+    throw new Error("Error al procesar la solicitud");
   }
 }

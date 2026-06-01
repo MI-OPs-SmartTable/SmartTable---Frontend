@@ -3,16 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { 
   saveSession, 
   clearSession, 
-  validateLogin,
   validatePin,
   apiLogin, 
   apiForgotPassword,
-  AVAILABLE_USERS  
 } from "../auth/authService";
+import { fetchUsuariosActivos } from "../services/configService";
 import "../styles/LoginPage.css";
 
 // ============================================
-// ICONOS (mantienen igual)
+// ICONOS
 // ============================================
 const IconLock = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -54,6 +53,21 @@ const IconChevronDown = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="6 9 12 15 18 9"/>
   </svg>
+);
+
+// ============================================
+// SPINNER COMPONENT
+// ============================================
+const Spinner = () => (
+  <div style={{
+    width: "40px",
+    height: "40px",
+    margin: "20px auto",
+    border: "3px solid var(--line)",
+    borderTopColor: "var(--orange)",
+    borderRadius: "50%",
+    animation: "spin 0.8s linear infinite"
+  }} />
 );
 
 // ============================================
@@ -152,8 +166,41 @@ export default function LoginPage() {
   const [banner, setBanner] = useState<{ type: "err" | "ok"; msg: string } | null>(null);
   const [showForgot, setShowForgot] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState<{ id: string; username: string; nombre: string; rol: string }[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const selectRef = useRef<HTMLDivElement>(null);
-  const pinRef = useRef<HTMLInputElement>(null);  
+  const pinRef = useRef<HTMLInputElement>(null);
+
+  
+  const getRolLabel = (rol: string) => {
+    const roles: Record<string, string> = {
+      admin: "Administrador",
+      cajero: "Cajero",
+      mesero: "Mesero",
+    };
+    return roles[rol] || rol;
+  };
+
+  // Cargar usuarios activos desde el backend
+  useEffect(() => {
+    const cargarUsuarios = async () => {
+      try {
+        setLoadingUsers(true);
+        const usuarios = await fetchUsuariosActivos();
+        setAvailableUsers(usuarios.map(u => ({
+          id: u.id,
+          username: u.nombre,
+          nombre: u.nombre,
+          rol: u.rol,
+        })));
+      } catch (error) {
+        console.error("Error cargando usuarios:", error);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    cargarUsuarios();
+  }, []);
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -177,16 +224,14 @@ export default function LoginPage() {
     e?.preventDefault();
     setBanner(null);
     
-    // Validar usuario
-    const userErr = validateLogin(selectedUser, pin);
     const pinErr = validatePin(pin);
     
     setFieldErrs({
-      username: userErr.username,
+      username: !selectedUser ? "Selecciona un usuario" : undefined,
       pin: pinErr.pin
     });
     
-    if (userErr.username || pinErr.pin) return;
+    if (!selectedUser || pinErr.pin) return;
 
     setLoading(true);
     try {
@@ -212,7 +257,36 @@ export default function LoginPage() {
     await apiForgotPassword(val);
   };
   
-  const selectedUserData = AVAILABLE_USERS.find(u => u.username === selectedUser);
+  const selectedUserData = availableUsers.find(u => u.username === selectedUser);
+
+  // Pantalla de carga con spinner naranja
+  if (loadingUsers) {
+    return (
+      <div className="pl-root">
+        <div className="pl-left">
+          <div className="pl-left-bg" />
+          <div className="pl-brand">
+            <div className="pl-brand-mark"><IconPOS /></div>
+            <div>
+              <div className="pl-brand-name">SmarTable</div>
+              <div className="pl-brand-tag">Sistema de Punto de Venta</div>
+            </div>
+          </div>
+          <div className="pl-hero">
+            <div className="pl-hero-label">Acceso al sistema</div>
+            <h1 className="pl-hero-title">Control total<br />de cada <em>venta</em></h1>
+            <p className="pl-hero-sub">Gestiona productos, registra ventas y controla tu caja de forma rápida, sencilla y eficiente desde un solo lugar</p>
+          </div>
+        </div>
+        <div className="pl-right">
+          <div className="pl-form-wrap" style={{ textAlign: "center" }}>
+            <Spinner />
+            <p style={{ marginTop: 20, color: "var(--ash)" }}>Cargando...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -277,7 +351,7 @@ export default function LoginPage() {
                   </div>
                   {isOpen && (
                     <div className="pl-select-dropdown">
-                      {AVAILABLE_USERS.map((user) => (
+                      {availableUsers.map((user) => (
                         <div
                           key={user.id}
                           className={`pl-select-option ${selectedUser === user.username ? "selected" : ""}`}
@@ -287,6 +361,7 @@ export default function LoginPage() {
                             setFieldErrs(p => ({...p, username: undefined}));
                           }}
                         >
+                          <div className="pl-select-option-role">{getRolLabel(user.rol)}</div>
                           <div className="pl-select-option-name">{user.nombre}</div>
                         </div>
                       ))}

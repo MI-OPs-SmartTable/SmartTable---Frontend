@@ -39,9 +39,9 @@
 }
 
 .pr-title {
-  font-family: 'Fraunces', serif;
+  font-family: 'Figtree', serif;
   font-size: 30px;
-  font-weight: 500;
+  font-weight: 700;
   color: var(--bark);
   letter-spacing: -0.3px;
 }
@@ -551,3 +551,4 @@
   .pr-table tr { display: block; padding: 12px 0; }
   .pr-table td { display: flex; justify-content: space-between; padding: 6px 14px; }
 }
+

@@ -1,8 +1,8 @@
-// ============================================
-// DATOS DE PRUEBA - CONFIGURACIÓN
-// ============================================
 
-import type { Usuario, RolConfig, Rol } from "../pages/dashboard/types/config.types";
+// CONFIGURACIÓN
+
+
+import type { RolConfig, Rol } from "../pages/dashboard/types/config.types";
 
 export const ROLES: RolConfig[] = [
   {
@@ -49,13 +49,9 @@ export const ROLES: RolConfig[] = [
   },
 ];
 
-export const USUARIOS_SEED: Usuario[] = [
-  { id: "u1", nombre: "Lina Marcela Rivas", email: "lina@restaurante.com", pin: "1234", rol: "admin", activo: true, esTu: true },
-  { id: "u2", nombre: "María López", email: "maria@restaurante.com", pin: "5678", rol: "cajero", activo: true },
-  { id: "u3", nombre: "Carlos García", email: "carlos@restaurante.com", pin: "9012", rol: "mesero", activo: true },
-  { id: "u4", nombre: "Ana Pérez", email: "ana@restaurante.com", pin: "3456", rol: "inventario", activo: true },
-];
-
 export const uid = () => `u${Date.now()}`;
-export const initials = (n: string) => n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+export const initials = (n: string | undefined | null) => {
+  if (!n) return "??";
+  return n.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+};
 export const rolInfo = (id: Rol) => ROLES.find((r) => r.id === id)!;

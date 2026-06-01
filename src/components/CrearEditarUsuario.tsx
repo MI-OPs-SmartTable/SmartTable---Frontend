@@ -1,9 +1,9 @@
-// ============================================
+
 // MODAL CREAR/EDITAR USUARIO
-// ============================================
+
 
 import { useState, useRef, useEffect } from "react";
-import type { Usuario, FormState, FormErrors } from "../pages/dashboard/types/config.types";  // 👈 Ruta corregida
+import type { Usuario, FormState, FormErrors } from "../pages/dashboard/types/config.types";
 import { ROLES } from "../data/seedConfig";
 
 const I = {
@@ -53,11 +53,11 @@ export default function CrearEditarUsuario({ editTarget, usuarios, onClose, onSa
   const [form, setForm] = useState<FormState>(() =>
     editTarget
       ? {
-          nombre: editTarget.nombre,
-          email: editTarget.email,
-          pin: editTarget.pin,
-          rol: editTarget.rol,
-          activo: editTarget.activo,
+          nombre: editTarget.nombre || "",
+          email: editTarget.email || "",
+          pin: editTarget.pin || "",
+          rol: editTarget.rol || "cajero",
+          activo: editTarget.activo !== undefined ? editTarget.activo : true,
         }
       : FORM_EMPTY
   );
@@ -73,8 +73,8 @@ export default function CrearEditarUsuario({ editTarget, usuarios, onClose, onSa
 
   const validate = (): boolean => {
     const e: FormErrors = {};
-    if (!form.nombre.trim()) e.nombre = "El nombre es obligatorio";
-    if (!form.pin.trim()) e.pin = "El PIN es obligatorio";
+    if (!form.nombre?.trim()) e.nombre = "El nombre es obligatorio";
+    if (!form.pin?.trim()) e.pin = "El PIN es obligatorio";
     else if (!/^\d{4}$/.test(form.pin)) e.pin = "El PIN debe tener exactamente 4 dígitos";
     if (!form.rol) e.rol = "Selecciona un rol";
     setErrors(e);
@@ -85,9 +85,15 @@ export default function CrearEditarUsuario({ editTarget, usuarios, onClose, onSa
     setBanner(null);
     if (!validate()) return;
 
-    const dup = usuarios.find(
-      (u) => u.nombre.trim().toLowerCase() === form.nombre.trim().toLowerCase() && u.id !== editTarget?.id
-    );
+    // Verificar duplicado (solo si hay usuarios)
+    let dup = false;
+    if (usuarios && Array.isArray(usuarios) && usuarios.length > 0) {
+      dup = usuarios.some((u) => {
+        if (!u?.nombre || !form?.nombre) return false;
+        return u.nombre.trim().toLowerCase() === form.nombre.trim().toLowerCase() && u.id !== editTarget?.id;
+      });
+    }
+    
     if (dup) {
       setBanner("dup");
       return;
@@ -103,7 +109,7 @@ export default function CrearEditarUsuario({ editTarget, usuarios, onClose, onSa
       pin: form.pin,
       rol: form.rol,
       activo: form.activo,
-      esTu: editTarget?.esTu,
+      esTu: editTarget?.esTu || false,
     };
 
     setSaving(false);
