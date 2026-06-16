@@ -1,15 +1,15 @@
 import type { LoginResponse } from "./authTypes";
+import { apiClient } from "../lib/apiClient";
 
-// ============================================
-// CONSTANTES
-// ============================================
 const TOKEN_KEY = "pos_auth_token";
 const TOKEN_EXP = "pos_auth_exp";
-const API_URL = "https://smarttable-backend-njq0.onrender.com/api";
+const USER_KEY = "pos_user";
 
-// ============================================
-// MANEJO DE SESIÓN (localStorage)
-// ============================================
+export type PosUser = {
+  id: string;
+  nombre_completo: string;
+  rol: string;
+};
 
 export function saveSession(token: string, expiresIn: number) {
   const exp = Date.now() + expiresIn * 1000;
@@ -17,9 +17,24 @@ export function saveSession(token: string, expiresIn: number) {
   localStorage.setItem(TOKEN_EXP, String(exp));
 }
 
+export function saveUser(user: PosUser) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function getUser(): PosUser | null {
+  const raw = localStorage.getItem(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as PosUser;
+  } catch {
+    return null;
+  }
+}
+
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_EXP);
+  localStorage.removeItem(USER_KEY);
 }
 
 export function isSessionValid(): boolean {
@@ -32,9 +47,6 @@ export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
-// ============================================
-// VALIDACIÓN DE CAMPOS (LOGIN)
-// ============================================
 export function validateLogin(username: string, password: string) {
   const errs: { username?: string; password?: string } = {};
   if (!username.trim()) errs.username = "Selecciona un usuario";
@@ -43,9 +55,6 @@ export function validateLogin(username: string, password: string) {
   return errs;
 }
 
-// ============================================
-// VALIDACIÓN DE PIN (4 DÍGITOS)
-// ============================================
 export function validatePin(pin: string) {
   const errs: { pin?: string } = {};
   if (!pin) errs.pin = "Campo requerido";
@@ -53,93 +62,60 @@ export function validatePin(pin: string) {
   return errs;
 }
 
-// ============================================
-// USUARIOS DISPONIBLES (para selector)
-// ============================================
-export const AVAILABLE_USERS = [
-  { id: "16151ab6fdb64b41a0b7c105f34cd158", username: "Admin Nathalia", nombre: "Admin Nathalia", pin: "1234" },
-  { id: "162441725c614d008ecc699e9e683ca1", username: "Admin Principal Lina", nombre: "Admin Principal Lina", pin: "1234" },
-  { id: "45f3dca8b4794f20b159b3f70d6787ec", username: "Cajero Santiago", nombre: "Cajero Santiago", pin: "1234" },
-  { id: "0a748b8dc1f14020a6d77f74a60ac108", username: "Mesero Carlos", nombre: "Mesero Carlos", pin: "1234" },
-];
-
-
 export async function apiLogin(username: string, pin: string): Promise<LoginResponse> {
-  try {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nombre_completo: username,
-        pin: pin,
-      }),
-    });
+  const data = await apiClient.post<{
+    token: string;
+    expiresIn?: number;
+    usuario?: { id?: string; nombre_completo?: string; rol?: string };
+  }>(
+    "/auth/login",
+    { nombre_completo: username, pin },
+    false
+  );
 
-    const data = await response.json();
-
-    if (!response.ok) {
- 
-      throw new Error("Credenciales incorrectas");
-    }
-
-    if (data.token) {
-      saveSession(data.token, data.expiresIn || 28800);
-    }
-
-    return {
-      token: data.token,
-      expiresIn: data.expiresIn || 28800,
-      user: {
-        id: data.usuario?.id || `u${Date.now()}`,
-        nombre: data.usuario?.nombre_completo || username,
-        rol: data.usuario?.rol || "cajero",
-        email: "",
-      },
-    };
-  } catch (error: any) {
- 
-    if (import.meta.env.DEV && error.message !== "Credenciales incorrectas") {
-      console.error("Error en login:", error);
-    }
+  if (!data.token) {
     throw new Error("Credenciales incorrectas");
+  }
+
+  const expiresIn = data.expiresIn ?? 28800;
+  saveSession(data.token, expiresIn);
+
+  const user: PosUser = {
+    id: data.usuario?.id ?? "",
+    nombre_completo: data.usuario?.nombre_completo ?? username,
+    rol: data.usuario?.rol ?? "cajero",
+  };
+
+  if (user.id) {
+    saveUser(user);
+  }
+
+  return {
+    token: data.token,
+    expiresIn,
+    user: {
+      id: user.id,
+      nombre: user.nombre_completo,
+      rol: user.rol as LoginResponse["user"]["rol"],
+      email: "",
+    },
+  };
+}
+
+export async function apiLogout(): Promise<void> {
+  try {
+    await apiClient.post("/auth/logout", {});
+  } catch {
+    /* ignorar si falla */
+  } finally {
+    clearSession();
   }
 }
 
-
-export function verifyPin(username: string, pin: string): boolean {
-  const user = AVAILABLE_USERS.find(u => u.username === username);
-  return user?.pin === pin;
-}
-
-
-// RECUPERAR CONTRASEÑA - CONEXIÓN CON BASE DE DATOS
-
 export async function apiForgotPassword(email: string) {
   try {
-    const response = await fetch(`${API_URL}/auth/forgot-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: email,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Error al procesar la solicitud");
-    }
-
-    return data;
-  } catch (error: any) {
-    // No mostrar error detallado en consola
-    if (import.meta.env.DEV) {
-      console.error("Error en forgot password:", error);
-    }
+    await apiClient.post("/auth/forgot-password", { email }, false);
+  } catch {
     throw new Error("Error al procesar la solicitud");
   }
 }

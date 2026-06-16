@@ -43,4 +43,4 @@ export const PRODUCTOS_SEED: Producto[] = [
 ];
 
 export const uid = () => `p${Date.now()}`;
-export const fmt = (n: number) => "$ " + n.toLocaleString("es-CO", { minimumFractionDigits: 0 });
+export { fmt, formatCOP } from "../lib/formatMoney";

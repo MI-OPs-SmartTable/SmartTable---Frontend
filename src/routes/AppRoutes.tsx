@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { PosSessionProvider } from "../context/PosSessionContext";
 import LoginPage from "../pages/LoginPage";
 import DashboardLayout from "../pages/DashboardLayout";
 import DashboardHome from "../pages/dashboard/DashboardHome";
@@ -44,7 +45,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
         
-        <Route path="/dashboard" element={<DashboardLayout />}>
+        <Route path="/dashboard" element={<PosSessionProvider><DashboardLayout /></PosSessionProvider>}>
           <Route index element={<DashboardHome />} />
           <Route path="ventas" element={<VentasPOS />} />
           

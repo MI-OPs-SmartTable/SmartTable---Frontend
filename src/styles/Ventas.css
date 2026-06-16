@@ -1,0 +1,136 @@
+.ventas-root {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+.ventas-banner {
+  grid-column: 1 / -1;
+  padding: 12px 16px;
+  background: rgba(232, 96, 28, 0.1);
+  border-radius: 10px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.ventas-banner a {
+  color: var(--orange);
+  font-weight: 600;
+}
+
+.ventas-catalogo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ventas-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ventas-filtro {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ventas-filtro.active {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+}
+
+.ventas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.ventas-producto {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.ventas-producto:hover {
+  border-color: var(--orange);
+}
+
+.ventas-producto-nombre {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.ventas-producto-precio {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ventas-carrito {
+  position: sticky;
+  top: 16px;
+}
+
+.ventas-carrito-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.ventas-carrito-qty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ventas-carrito-qty button {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  cursor: pointer;
+}
+
+.ventas-total {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 16px 0;
+}
+
+.ventas-cobrar {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--orange);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ventas-cobrar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .ventas-root {
+    grid-template-columns: 1fr;
+  }
+}

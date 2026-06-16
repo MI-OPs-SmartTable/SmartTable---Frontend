@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
-import { clearSession } from "../auth/authService";
-import { useState, useEffect } from "react";
+import { apiLogout } from "../auth/authService";
+import { usePosSession } from "../context/PosSessionContext";
 import "../styles/Dashboard.css";
 
 // ============================================
@@ -40,31 +40,17 @@ const getRolLabel = (rol: string) => {
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>("");
+  const { usuario } = usePosSession();
+  const userName = usuario?.nombre_completo ?? "";
+  const rol = usuario?.rol ?? null;
 
-  useEffect(() => {
-    const token = localStorage.getItem("pos_auth_token");
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUserRole(payload.rol || "cajero");
-        setUserName(payload.nombre_completo || "");
-      } catch (error) {
-        console.error("Error decodificando token:", error);
-      }
-    }
-  }, []);
-
-  const handleLogout = () => {
-    clearSession();
+  const handleLogout = async () => {
+    await apiLogout();
     window.location.href = "/login";
   };
 
 
-  const navItems = userRole 
-    ? ALL_NAV_ITEMS.filter(item => item.roles.includes(userRole))
-    : [];
+  const navItems = rol ? ALL_NAV_ITEMS.filter((item) => item.roles.includes(rol)) : [];
 
   // Mostrar título en dashboard
   const showHeader = location.pathname === "/dashboard";
@@ -72,9 +58,9 @@ export default function DashboardLayout() {
   // Obtener inicial para el avatar
   const getAvatarInitial = () => {
     if (userName) return userName.charAt(0).toUpperCase();
-    if (userRole === "admin") return "A";
-    if (userRole === "cajero") return "C";
-    if (userRole === "mesero") return "M";
+    if (rol === "admin") return "A";
+    if (rol === "cajero") return "C";
+    if (rol === "mesero") return "M";
     return "U";
   };
 
@@ -105,7 +91,7 @@ export default function DashboardLayout() {
         <div className="db-user" onClick={handleLogout}>
           <div className="db-user-avatar">{getAvatarInitial()}</div>
           <div>
-            <div className="db-user-name">{userName || getRolLabel(userRole || "usuario")}</div>
+            <div className="db-user-name">{userName || getRolLabel(rol || "usuario")}</div>
             <div className="db-user-role">Cerrar sesión</div>
           </div>
           <div className="db-user-chevron">{Ic.logout}</div>

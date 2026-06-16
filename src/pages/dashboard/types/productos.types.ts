@@ -27,6 +27,7 @@ export type Producto = {
   activo: boolean;
   insumos: ProductoInsumo[];
   emoji?: string;
+  varianteId?: string;
 };
 
 export type FormState = {

@@ -1,71 +1,51 @@
-
+import { apiClient } from "../lib/apiClient";
+import {
+  mapCatalogoFromApi,
+  mapCategoriaFromApi,
+  mapProductoFromApi,
+  mapProductoToCreateApi,
+  mapProductoToUpdateApi,
+  type CatalogoItem,
+} from "../lib/mappers/productoMapper";
+import { enrichCategoria } from "../lib/categoriaUi";
 import type { Producto, Categoria, Insumo } from "../pages/dashboard/types/productos.types";
-import { CATEGORIAS_SEED, INSUMOS_SEED, PRODUCTOS_SEED } from "../data/seedData"
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+import { fetchInsumosLista } from "./insumosService";
 
-// OBTENER PRODUCTOS (CONEXIÓN BD)
+type ApiRow = Parameters<typeof mapProductoFromApi>[0];
+
 export async function fetchProductos(): Promise<Producto[]> {
-  try {
-    const response = await fetch(`${API_URL}/productos`);
-    if (!response.ok) throw new Error("Error al cargar productos");
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetchProductos:", error);
-    return PRODUCTOS_SEED; // Fallback a datos locales
-  }
+  const data = await apiClient.get<ApiRow[]>("/productos?detalle=1");
+  return data.map(mapProductoFromApi);
 }
 
-// OBTENER CATEGORÍAS
+export async function fetchCatalogo(): Promise<CatalogoItem[]> {
+  const data = await apiClient.get<ApiRow[]>("/productos?catalogo=1");
+  return data.map(mapCatalogoFromApi);
+}
+
 export async function fetchCategorias(): Promise<Categoria[]> {
-  try {
-    const response = await fetch(`${API_URL}/categorias`);
-    if (!response.ok) throw new Error("Error al cargar categorías");
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return CATEGORIAS_SEED;
-  }
+  const data = await apiClient.get<{ id: string; nombre: string }[]>("/categorias");
+  return data.map((c) => enrichCategoria(mapCategoriaFromApi(c)));
 }
 
-//  OBTENER INSUMOS
 export async function fetchInsumos(): Promise<Insumo[]> {
-  try {
-    const response = await fetch(`${API_URL}/insumos`);
-    if (!response.ok) throw new Error("Error al cargar insumos");
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    return INSUMOS_SEED;
-  }
+  const list = await fetchInsumosLista();
+  return list.map(({ id, nombre, unidad }) => ({ id, nombre, unidad }));
 }
 
-// CREAR PRODUCTO
 export async function crearProducto(producto: Omit<Producto, "id">): Promise<Producto> {
-  const response = await fetch(`${API_URL}/productos`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(producto),
-  });
-  if (!response.ok) throw new Error("Error al crear producto");
-  return response.json();
+  const created = await apiClient.post<ApiRow>("/productos", mapProductoToCreateApi(producto));
+  return mapProductoFromApi(created);
 }
 
-// ACTUALIZAR PRODUCTO
 export async function actualizarProducto(id: string, producto: Partial<Producto>): Promise<Producto> {
-  const response = await fetch(`${API_URL}/productos/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(producto),
-  });
-  if (!response.ok) throw new Error("Error al actualizar producto");
-  return response.json();
+  await apiClient.put<ApiRow>(`/productos/${id}`, mapProductoToUpdateApi(producto));
+  const list = await apiClient.get<ApiRow[]>("/productos?detalle=1");
+  const found = list.find((p) => p.id === id);
+  if (!found) throw new Error("Producto no encontrado tras actualizar");
+  return mapProductoFromApi(found);
 }
 
-// ELIMINAR PRODUCTO
 export async function eliminarProducto(id: string): Promise<void> {
-  const response = await fetch(`${API_URL}/productos/${id}`, {
-    method: "DELETE",
-  });
-  if (!response.ok) throw new Error("Error al eliminar producto");
+  await apiClient.delete(`/productos/${id}`);
 }

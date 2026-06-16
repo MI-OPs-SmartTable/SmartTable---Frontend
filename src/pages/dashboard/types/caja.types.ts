@@ -1,13 +1,13 @@
 // types.ts
 export interface CierreCaja {
-  id: number;
+  id: string;
   fecha: string;
   diaSemana: string;
   cerradoPor: string;
   hora: string;
   total: number;
+  montoEfectivo?: number;
+  montoTransferencia?: number;
 }
 
-export function formatCurrency(value: number): string {
-  return `$ ${value.toLocaleString("es-CO")}`;
-}
+export { formatCOP as formatCurrency } from "../../../lib/formatMoney";

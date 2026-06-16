@@ -7,7 +7,8 @@ import {
   apiLogin, 
   apiForgotPassword,
 } from "../auth/authService";
-import { fetchUsuariosActivos } from "../services/configService";
+import { fetchUsuariosParaLogin } from "../services/authUsuariosService";
+import { mapAuthUsuarioToLoginOption } from "../lib/mappers/usuarioMapper";
 import "../styles/LoginPage.css";
 
 // ============================================
@@ -186,13 +187,8 @@ export default function LoginPage() {
     const cargarUsuarios = async () => {
       try {
         setLoadingUsers(true);
-        const usuarios = await fetchUsuariosActivos();
-        setAvailableUsers(usuarios.map(u => ({
-          id: u.id,
-          username: u.nombre,
-          nombre: u.nombre,
-          rol: u.rol,
-        })));
+        const usuarios = await fetchUsuariosParaLogin();
+        setAvailableUsers(usuarios.map(mapAuthUsuarioToLoginOption));
       } catch (error) {
         console.error("Error cargando usuarios:", error);
       } finally {

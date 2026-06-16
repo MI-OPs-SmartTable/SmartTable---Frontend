@@ -1,9 +1,7 @@
 import { useState } from "react";
 import type { CierreCaja } from "../pages/dashboard/types/caja.types";
 
-function formatCurrency(value: number): string {
-  return `$ ${value.toLocaleString("es-CO")}`;
-}
+import { formatCOP } from "../lib/formatMoney";
 
 function CalendarIcon() {
   return (
@@ -33,10 +31,10 @@ interface Props {
 }
 
 export default function CajaHistorial({ historial }: Props) {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [fechaFiltro, setFechaFiltro] = useState("");
 
-  const toggleExpand = (id: number) => setExpandedId(expandedId === id ? null : id);
+  const toggleExpand = (id: string) => setExpandedId(expandedId === id ? null : id);
 
   const filtrado = fechaFiltro
     ? historial.filter((c) => {
@@ -71,7 +69,7 @@ export default function CajaHistorial({ historial }: Props) {
               </div>
               <div className="caja-historial-fila-monto">
                 <div className="caja-historial-fila-monto-valor">
-                  <p>{formatCurrency(cierre.total)}</p>
+                  <p>{formatCOP(cierre.total)}</p>
                   <p>Total vendido</p>
                 </div>
                 <ChevronIcon expanded={expandedId === cierre.id} />
@@ -82,9 +80,14 @@ export default function CajaHistorial({ historial }: Props) {
               <div className="caja-historial-detalle">
                 <div className="caja-historial-detalle-grid">
                   {[
-                    { label: "Efectivo", value: formatCurrency(Math.round(cierre.total * 0.6)) },
-                    { label: "Tarjeta", value: formatCurrency(Math.round(cierre.total * 0.3)) },
-                    { label: "Transferencia", value: formatCurrency(Math.round(cierre.total * 0.1)) },
+                    {
+                      label: "Efectivo",
+                      value: formatCOP(cierre.montoEfectivo ?? Math.round(cierre.total * 0.6)),
+                    },
+                    {
+                      label: "Transferencia",
+                      value: formatCOP(cierre.montoTransferencia ?? Math.round(cierre.total * 0.4)),
+                    },
                   ].map((item) => (
                     <div key={item.label} className="caja-historial-detalle-item">
                       <p>{item.label}</p>
