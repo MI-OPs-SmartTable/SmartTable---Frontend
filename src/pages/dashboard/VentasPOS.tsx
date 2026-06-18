@@ -37,6 +37,11 @@ export default function VentasPOS() {
   const [montoTransferencia, setMontoTransferencia] = useState("");
   const [processing, setProcessing] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
+  
+  // UI states
+  const [search, setSearch] = useState("");
+  const [tabSidebar, setTabSidebar] = useState<"nuevo" | "cobrar">("nuevo");
+  const [salon, setSalon] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -56,9 +61,12 @@ export default function VentasPOS() {
   }, []);
 
   const filtered = useMemo(() => {
-    if (catFilter === "all") return catalogo;
-    return catalogo.filter((p) => p.categoria_id === catFilter);
-  }, [catalogo, catFilter]);
+    return catalogo.filter((p) => {
+      const matchSearch = p.nombre.toLowerCase().includes(search.toLowerCase());
+      const matchCat = catFilter === "all" || p.categoria_id === catFilter;
+      return matchSearch && matchCat;
+    });
+  }, [catalogo, search, catFilter]);
 
   const total = useMemo(
     () => cart.reduce((s, i) => s + i.precio * i.cantidad, 0),
@@ -162,27 +170,19 @@ export default function VentasPOS() {
 
   return (
     <div className="ventas-root">
-      {!cajaAbierta && (
-        <div className="ventas-banner">
-          Debes abrir la caja antes de cobrar.{" "}
-          <Link to="/dashboard/caja">Ir a Caja →</Link>
+      <div className="ventas-main">
+        <div className="ventas-search-wrapper">
+          <span className="ventas-search-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input
+            className="ventas-search-input"
+            placeholder="Buscar producto..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      )}
 
-      {error && (
-        <div className="ventas-banner" style={{ background: "rgba(192,57,43,0.1)" }}>
-          {error}
-        </div>
-      )}
-
-      {successMsg && (
-        <div className="ventas-banner" style={{ background: "rgba(45,122,79,0.1)" }}>
-          {successMsg}
-        </div>
-      )}
-
-      <div className="ventas-catalogo db-card" style={{ padding: 16 }}>
-        <div className="db-card-title">Catálogo</div>
         <div className="ventas-filtros">
           <button
             type="button"
@@ -202,11 +202,11 @@ export default function VentasPOS() {
             </button>
           ))}
         </div>
-        <div className="ventas-grid" style={{ marginTop: 12 }}>
+
+        <div className="ventas-grid">
           {filtered.length === 0 ? (
-            <div className="db-empty">
-              <div className="db-empty-title">Sin productos</div>
-              <div className="db-empty-desc">Crea productos en el módulo Productos</div>
+            <div style={{ padding: 24, textAlign: "center", color: "var(--muted)", gridColumn: "1 / -1" }}>
+              Sin productos
             </div>
           ) : (
             filtered.map((p) => {
@@ -220,9 +220,12 @@ export default function VentasPOS() {
                   onClick={() => addToCart(p)}
                   disabled={!cajaAbierta}
                 >
-                  <div style={{ fontSize: 20 }}>{ui.emoji}</div>
-                  <div className="ventas-producto-nombre">{p.nombre}</div>
-                  <div className="ventas-producto-precio">{fmt(p.precio)}</div>
+                  <div className="ventas-producto-emoji">{ui.emoji}</div>
+                  <div className="ventas-producto-info">
+                    <div className="ventas-producto-nombre">{p.nombre}</div>
+                    <div className="ventas-producto-precio">{fmt(p.precio)}</div>
+                    {cat && <div className="ventas-producto-cat">{cat.nombre}</div>}
+                  </div>
                 </button>
               );
             })
@@ -230,40 +233,106 @@ export default function VentasPOS() {
         </div>
       </div>
 
-      <div className="ventas-carrito db-card" style={{ padding: 16 }}>
-        <div className="db-card-title">Carrito ({cart.length})</div>
-        {cart.length === 0 ? (
-          <div className="db-empty" style={{ padding: "24px 0" }}>
-            <div className="db-empty-icon">🛒</div>
-            <div className="db-empty-title">Carrito vacío</div>
-            <div className="db-empty-desc">Agrega productos para comenzar una venta</div>
-          </div>
-        ) : (
-          <>
-            {cart.map((item) => (
-              <div key={item.variante_id} className="ventas-carrito-item">
-                <div>
-                  <div>{item.nombre}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>{fmt(item.precio)} c/u</div>
-                </div>
-                <div className="ventas-carrito-qty">
-                  <button type="button" onClick={() => updateQty(item.variante_id, -1)}>−</button>
-                  <span>{item.cantidad}</span>
-                  <button type="button" onClick={() => updateQty(item.variante_id, 1)}>+</button>
-                </div>
+      <div className="ventas-sidebar">
+        <div className="ventas-sidebar-tabs">
+          <button 
+            type="button"
+            className={`ventas-sidebar-tab ${tabSidebar === "nuevo" ? "active" : ""}`} 
+            onClick={() => setTabSidebar("nuevo")}
+          >
+            Nuevo Pedido
+          </button>
+          <button 
+            type="button"
+            className={`ventas-sidebar-tab ${tabSidebar === "cobrar" ? "active" : ""}`} 
+            onClick={() => setTabSidebar("cobrar")}
+          >
+            Por Cobrar
+          </button>
+        </div>
+
+        <div className="ventas-sidebar-content">
+          {tabSidebar === "nuevo" ? (
+            <>
+              <div className="ventas-form-group">
+                <label className="ventas-label">Salón</label>
+                <select className="ventas-select" value={salon} onChange={(e) => setSalon(e.target.value)}>
+                  <option value="" disabled>— Seleccionar salón —</option>
+                  <option value="principal">Salón Principal</option>
+                  <option value="terraza">Terraza</option>
+                  <option value="vip">Salón VIP</option>
+                  <option value="barra">Barra</option>
+                  <option value="llevar">Para Llevar</option>
+                </select>
               </div>
-            ))}
-            <div className="ventas-total">Total: {fmt(total)}</div>
-            <button
-              type="button"
-              className="ventas-cobrar"
-              disabled={!cajaAbierta || cart.length === 0}
-              onClick={openPago}
-            >
-              Cobrar
-            </button>
-          </>
-        )}
+
+              <div className="ventas-banner-info">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span>Selecciona salón y mesa para agregar productos</span>
+              </div>
+
+              {!cajaAbierta && (
+                <div className="ventas-banner-warning">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                  <span>Debe abrir la caja antes de registrar ventas</span>
+                </div>
+              )}
+
+              {error && (
+                <div className="ventas-banner-error">{error}</div>
+              )}
+
+              {successMsg && (
+                <div className="ventas-banner-success">{successMsg}</div>
+              )}
+
+              {cart.length === 0 ? (
+                <div className="ventas-empty-cart">
+                  <div className="ventas-empty-cart-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                  </div>
+                  <div>Agrega productos al pedido</div>
+                </div>
+              ) : (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ flex: 1, overflowY: "auto", borderTop: "1px solid var(--line)" }}>
+                    {cart.map((item) => (
+                      <div key={item.variante_id} className="ventas-carrito-item">
+                        <div>
+                          <div style={{ fontWeight: 500, color: "var(--text)" }}>{item.nombre}</div>
+                          <div style={{ fontSize: 13, color: "var(--orange)" }}>{fmt(item.precio)} c/u</div>
+                        </div>
+                        <div className="ventas-carrito-qty">
+                          <button type="button" onClick={() => updateQty(item.variante_id, -1)}>−</button>
+                          <span>{item.cantidad}</span>
+                          <button type="button" onClick={() => updateQty(item.variante_id, 1)}>+</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="ventas-total">
+                    <span>Total</span>
+                    <span>{fmt(total)}</span>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    className="ventas-cobrar"
+                    disabled={!cajaAbierta || cart.length === 0 || !salon}
+                    onClick={openPago}
+                  >
+                    Cobrar
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="ventas-empty-cart">
+              <div>No hay pedidos por cobrar</div>
+            </div>
+          )}
+        </div>
       </div>
 
       {showPago && (

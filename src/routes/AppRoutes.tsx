@@ -47,7 +47,12 @@ const AppRoutes = () => {
         
         <Route path="/dashboard" element={<PosSessionProvider><DashboardLayout /></PosSessionProvider>}>
           <Route index element={<DashboardHome />} />
-          <Route path="ventas" element={<VentasPOS />} />
+          
+          <Route path="ventas" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <VentasPOS />
+            </ProtectedRoute>
+          } />
           
           {/* Solo admin puede ver productos */}
           <Route path="productos" element={
