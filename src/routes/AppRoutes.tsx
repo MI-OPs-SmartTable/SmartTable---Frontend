@@ -6,7 +6,7 @@ import DashboardHome from "../pages/dashboard/DashboardHome";
 import VentasPOS from "../pages/dashboard/VentasPOS";
 import Productos from "../pages/dashboard/Productos";
 import Caja from "../pages/dashboard/Caja";
-import Configuracion from "../pages/dashboard/configuracion";
+import Configuracion from "../pages/dashboard/ConfiguracionUsuarios";
 
 
 interface ProtectedRouteProps {

@@ -1,6 +1,4 @@
-// ============================================
-// CONFIGURACIÓN - GESTIÓN DE USUARIOS
-// ============================================
+
 
 import { useState, useEffect, useCallback } from "react";
 import type { Usuario } from "./types/config.types";
@@ -14,10 +12,10 @@ import {
 import UsuarioModal from "../../components/CrearEditarUsuario";
 import DeleteConfirm from "../../components/DeleteConfirmUsuario";
 import "../../styles/Configuracion.css";
+import RestauranteTab from "./RestauranteTab";
+import EntidadesBancariasTab from "./EntidadesBancariasTab";
 
-// ============================================
-// ICONOS
-// ============================================
+
 const I = {
   plus: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -51,14 +49,43 @@ const I = {
       <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
+  users: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  ),
+  restaurant: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2" />
+      <path d="M7 2v20M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" />
+    </svg>
+  ),
+  bank: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <line x1="3" y1="22" x2="21" y2="22" />
+      <line x1="6" y1="18" x2="6" y2="11" />
+      <line x1="10" y1="18" x2="10" y2="11" />
+      <line x1="14" y1="18" x2="14" y2="11" />
+      <line x1="18" y1="18" x2="18" y2="11" />
+      <polygon points="12 2 20 7 4 7" />
+    </svg>
+  ),
 };
 
+
+
 export default function Configuracion() {
+  // Estado de usuarios
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<"new" | "edit" | null>(null);
   const [editTarget, setEditTarget] = useState<Usuario | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Usuario | null>(null);
+
+  // Estado de tabs
+  const [activeTab, setActiveTab] = useState<"usuarios" | "restaurante" | "bancarias">("usuarios");
 
   // Cargar usuarios desde BD
   useEffect(() => {
@@ -101,21 +128,34 @@ export default function Configuracion() {
     }
   }, [deleteTarget]);
 
-  if (loading) {
+  // ============================================
+  // RENDERIZADO DE TABS
+  // ============================================
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "usuarios":
+        return renderUsuariosTab();
+      case "restaurante":
+        return <RestauranteTab />;
+      case "bancarias":
+        return <EntidadesBancariasTab />;
+      default:
+        return null;
+    }
+  };
+
+  const renderUsuariosTab = () => {
+    if (loading) {
+      return (
+        <div className="cfg-loading">
+          <p>Cargando usuarios...</p>
+        </div>
+      );
+    }
+
     return (
-      <div className="cfg-root">
-        <h1 className="cfg-title">Configuración</h1>
-        <p className="cfg-sub">Cargando usuarios...</p>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <div className="cfg-root">
-        <h1 className="cfg-title">Configuración</h1>
-        <p className="cfg-sub">Gestiona los usuarios y sus roles de acceso al sistema</p>
-
+      <>
         <div className="cfg-toolbar">
           <span className="cfg-count">
             {usuarios.length} usuario{usuarios.length !== 1 ? "s" : ""} registrado
@@ -179,24 +219,63 @@ export default function Configuracion() {
             );
           })}
         </div>
+
+        {/* Modales de usuarios */}
+        {(modal === "new" || modal === "edit") && (
+          <UsuarioModal
+            editTarget={modal === "edit" ? editTarget : null}
+            usuarios={usuarios}
+            onClose={() => setModal(null)}
+            onSave={handleSave}
+          />
+        )}
+
+        {deleteTarget && (
+          <DeleteConfirm
+            nombre={deleteTarget.nombre}
+            onCancel={() => setDeleteTarget(null)}
+            onConfirm={handleDelete}
+          />
+        )}
+      </>
+    );
+  };
+
+
+  return (
+    <div className="cfg-root">
+      <h1 className="cfg-title">Configuración</h1>
+      <p className="cfg-sub">Gestiona usuarios, restaurante y entidades bancarias</p>
+
+      {/* Tabs */}
+      <div className="cfg-tabs">
+        <button
+          className={`cfg-tab ${activeTab === "usuarios" ? "active" : ""}`}
+          onClick={() => setActiveTab("usuarios")}
+        >
+          <span className="cfg-tab-icon">{I.users}</span>
+          Usuarios
+        </button>
+        <button
+          className={`cfg-tab ${activeTab === "restaurante" ? "active" : ""}`}
+          onClick={() => setActiveTab("restaurante")}
+        >
+          <span className="cfg-tab-icon">{I.restaurant}</span>
+          Restaurante
+        </button>
+        <button
+          className={`cfg-tab ${activeTab === "bancarias" ? "active" : ""}`}
+          onClick={() => setActiveTab("bancarias")}
+        >
+          <span className="cfg-tab-icon">{I.bank}</span>
+          Entidades Bancarias
+        </button>
       </div>
 
-      {(modal === "new" || modal === "edit") && (
-        <UsuarioModal
-          editTarget={modal === "edit" ? editTarget : null}
-          usuarios={usuarios}
-          onClose={() => setModal(null)}
-          onSave={handleSave}
-        />
-      )}
-
-      {deleteTarget && (
-        <DeleteConfirm
-          nombre={deleteTarget.nombre}
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={handleDelete}
-        />
-      )}
-    </>
+      {/* Contenido del tab activo */}
+      <div className="cfg-tab-content">
+        {renderTabContent()}
+      </div>
+    </div>
   );
 }
