@@ -552,3 +552,625 @@
   .pr-table td { display: flex; justify-content: space-between; padding: 6px 14px; }
 }
 
+/* ========== PROVEEDORES - MODALES MEJORADOS ========== */
+
+/* Overlay del modal */
+.pr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Contenedor del modal */
+.pr-modal {
+  background: white;
+  border-radius: 1.25rem;
+  width: 100%;
+  max-width: 32rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Scrollbar del modal */
+.pr-modal::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pr-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pr-modal::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 9999px;
+}
+
+.pr-modal::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Header del modal */
+.pr-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 2px solid #f3f4f6;
+  background: #fafafa;
+  border-radius: 1.25rem 1.25rem 0 0;
+}
+
+.pr-modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pr-modal-title::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 1.25rem;
+  background: #f97316;
+  border-radius: 9999px;
+}
+
+.pr-modal-close {
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pr-modal-close:hover {
+  color: #374151;
+  background: #f3f4f6;
+  transform: rotate(90deg);
+}
+
+.pr-modal-close svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Body del modal */
+.pr-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Grupos de formulario */
+.pr-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.pr-form-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pr-form-group label .pr-required {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.pr-form-group input,
+.pr-form-group textarea,
+.pr-form-group select {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+  background: #fafafa;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.pr-form-group input:hover,
+.pr-form-group textarea:hover,
+.pr-form-group select:hover {
+  background: white;
+  border-color: #d1d5db;
+}
+
+.pr-form-group input:focus,
+.pr-form-group textarea:focus,
+.pr-form-group select:focus {
+  border-color: #f97316;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.pr-form-group input::placeholder,
+.pr-form-group textarea::placeholder {
+  color: #9ca3af;
+}
+
+.pr-form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.pr-form-group select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  padding-right: 2.5rem;
+}
+
+/* Fila con dos campos */
+.pr-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Mensaje de error */
+.pr-field-error {
+  font-size: 0.875rem;
+  color: #ef4444;
+  background: #fef2f2;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pr-field-error::before {
+  content: "⚠️";
+  font-size: 1rem;
+}
+
+/* Footer del modal */
+.pr-modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 2px solid #f3f4f6;
+  background: #fafafa;
+  border-radius: 0 0 1.25rem 1.25rem;
+}
+
+.pr-btn-cancel {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pr-btn-cancel:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.pr-btn-cancel:active {
+  transform: translateY(0);
+}
+
+.pr-btn-submit {
+  flex: 1;
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 1px 3px rgba(249, 115, 22, 0.3);
+}
+
+.pr-btn-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+}
+
+.pr-btn-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.pr-btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pr-btn-submit svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ========== TARJETAS DE PROVEEDORES MEJORADAS ========== */
+
+.proveedores-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+}
+
+/* Buscador de proveedores */
+.proveedores-search {
+  position: relative;
+}
+
+.proveedores-search svg {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: #9ca3af;
+}
+
+.proveedores-search input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  background: white;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.proveedores-search input:hover {
+  border-color: #d1d5db;
+}
+
+.proveedores-search input:focus {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+.proveedores-search input::placeholder {
+  color: #9ca3af;
+}
+
+/* Grid de tarjetas */
+.proveedores-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .proveedores-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Tarjeta individual */
+.pr-card {
+  background: white;
+  border: 1px solid #f3f4f6;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.pr-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f97316, #fb923c);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.pr-card:hover {
+  border-color: #e5e7eb;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.pr-card:hover::before {
+  opacity: 1;
+}
+
+/* Header de la tarjeta */
+.pr-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.pr-card-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pr-card-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #fed7aa;
+}
+
+.pr-card-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #f97316;
+}
+
+.pr-card-title {
+  font-weight: 600;
+  color: #111827;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.pr-card-sub {
+  font-size: 0.813rem;
+  color: #6b7280;
+  margin-top: 0.125rem;
+}
+
+/* Acciones de la tarjeta */
+.pr-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pr-action-btn {
+  padding: 0.375rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pr-action-btn:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+
+.pr-action-btn.danger:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.pr-action-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Cuerpo de la tarjeta */
+.pr-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.813rem;
+  color: #4b5563;
+}
+
+.pr-card-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pr-card-detail svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.pr-card-detail span {
+  word-break: break-word;
+}
+
+/* Divisor de la tarjeta */
+.pr-card-divider {
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.pr-card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #f97316;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.pr-card-text {
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.4;
+}
+
+/* Insumos de la tarjeta */
+.pr-card-insumos-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.813rem;
+  color: #6b7280;
+}
+
+.pr-card-insumos-header svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.pr-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.125rem;
+}
+
+.pr-tag {
+  font-size: 0.688rem;
+  font-weight: 500;
+  background: #ecfdf5;
+  color: #059669;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid #d1fae5;
+  transition: all 0.2s ease;
+}
+
+.pr-tag:hover {
+  background: #d1fae5;
+  transform: scale(1.02);
+}
+
+.pr-tag-more {
+  font-size: 0.688rem;
+  font-weight: 500;
+  color: #9ca3af;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Estado vacío */
+.proveedores-empty {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #9ca3af;
+  font-size: 0.875rem;
+  background: white;
+  border-radius: 0.75rem;
+  border: 2px dashed #e5e7eb;
+}
+
+.proveedores-empty::before {
+  content: "📋";
+  display: block;
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ========== RESPONSIVE ========== */
+
+@media (max-width: 640px) {
+  .pr-modal {
+    max-width: 100%;
+    margin: 0.5rem;
+    border-radius: 1rem;
+  }
+  
+  .pr-modal-header {
+    padding: 1rem;
+  }
+  
+  .pr-modal-body {
+    padding: 1rem;
+  }
+  
+  .pr-modal-footer {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+  }
+  
+  .pr-field-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  
+  .pr-card {
+    padding: 1rem;
+  }
+  
+  .pr-card-info {
+    gap: 0.5rem;
+  }
+  
+  .pr-card-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}

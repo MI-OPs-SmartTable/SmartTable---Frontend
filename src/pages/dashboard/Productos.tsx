@@ -19,6 +19,8 @@ import ProductModal from "../../components/CrearEditarProductos";
 import CategoriaModal from "../../components/CategoriaModal";
 import InsumoModal from "../../components/InsumoModal";
 import DeleteConfirm from "../../components/DeleteConfirmProductos";
+import ProveedoresTab from "../../components/ProveedoresTab";
+import { proveedoresIniciales, type Proveedor } from  "./types/proveedores.types";
 import "../../styles/Productos.css";
 
 const I = {
@@ -28,13 +30,14 @@ const I = {
   search: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
 };
 
-type Tab = "productos" | "categorias" | "insumos";
+type Tab = "productos" | "categorias" | "insumos" | "proveedores";
 
 export default function Productos() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [insumosFull, setInsumosFull] = useState<InsumoCompleto[]>([]);
+  const [proveedores, setProveedores] = useState<Proveedor[]>(proveedoresIniciales);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("productos");
@@ -52,6 +55,8 @@ export default function Productos() {
   const [insumoModal, setInsumoModal] = useState<"new" | "edit" | null>(null);
   const [editInsumo, setEditInsumo] = useState<InsumoCompleto | null>(null);
   const [deleteInsumo, setDeleteInsumo] = useState<InsumoCompleto | null>(null);
+
+  const [abrirModalProveedor, setAbrirModalProveedor] = useState<boolean>(false);
 
   const cargarDatos = useCallback(async () => {
     setLoading(true);
@@ -149,11 +154,13 @@ export default function Productos() {
     }
   };
 
+  // <-- MODIFICADO: Agregar proveedor_id
   const handleSaveInsumo = async (data: {
     nombre: string;
     unidad: string;
     cantidad_actual?: number;
     stock_minimo?: number;
+    proveedor_id?: string;
   }) => {
     if (editInsumo) {
       await actualizarInsumo(editInsumo.id, data);
@@ -183,14 +190,21 @@ export default function Productos() {
     } else if (tab === "categorias") {
       setEditCat(null);
       setCatModal("new");
-    } else {
+    } else if (tab === "insumos") {
       setEditInsumo(null);
       setInsumoModal("new");
+    } else if (tab === "proveedores") {
+      setAbrirModalProveedor(true);
     }
   };
 
+  const showNewButton = true;
+
   const newButtonLabel =
-    tab === "productos" ? "Nuevo Producto" : tab === "categorias" ? "Nueva Categoría" : "Nuevo Insumo";
+    tab === "productos" ? "Nuevo Producto" : 
+    tab === "categorias" ? "Nueva Categoría" : 
+    tab === "insumos" ? "Nuevo Insumo" : 
+    "Nuevo Proveedor";
 
   if (loading) {
     return (
@@ -224,13 +238,15 @@ export default function Productos() {
           <div>
             <h1 className="pr-title">Productos</h1>
             <p className="pr-sub">
-              {productos.length} productos · {categorias.length} categorías · {insumos.length} insumos
+              {productos.length} productos · {categorias.length} categorías · {insumos.length} insumos · {proveedores.length} proveedores
               {error ? ` · ${error}` : ""}
             </p>
           </div>
-          <button type="button" className="pr-btn-new" onClick={newButton}>
-            {I.plus} {newButtonLabel}
-          </button>
+          {showNewButton && (
+            <button type="button" className="pr-btn-new" onClick={newButton}>
+              {I.plus} {newButtonLabel}
+            </button>
+          )}
         </div>
 
         <div className="pr-tabs">
@@ -242,6 +258,9 @@ export default function Productos() {
           </button>
           <button type="button" className={`pr-tab${tab === "insumos" ? " active" : ""}`} onClick={() => setTab("insumos")}>
             Insumos ({insumos.length})
+          </button>
+          <button type="button" className={`pr-tab${tab === "proveedores" ? " active" : ""}`} onClick={() => setTab("proveedores")}>
+            Proveedores
           </button>
         </div>
 
@@ -367,6 +386,7 @@ export default function Productos() {
           </div>
         )}
 
+        {/* <-- MODIFICADO: Tabla de insumos con columna Proveedor */}
         {tab === "insumos" && (
           <div className="pr-table-wrap">
             <table className="pr-table">
@@ -376,37 +396,59 @@ export default function Productos() {
                   <th>Unidad</th>
                   <th style={{ textAlign: "right" }}>Stock</th>
                   <th style={{ textAlign: "right" }}>Mínimo</th>
+                  <th>Proveedor</th>
                   <th style={{ textAlign: "right" }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {insumosFull.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       <div className="pr-empty">
                         <div className="pr-empty-title">Sin insumos</div>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  insumosFull.map((ins) => (
-                    <tr key={ins.id}>
-                      <td className="pr-prod-name">{ins.nombre}</td>
-                      <td>{ins.unidad}</td>
-                      <td style={{ textAlign: "right" }}>{ins.cantidad_actual ?? 0}</td>
-                      <td style={{ textAlign: "right" }}>{ins.stock_minimo ?? 0}</td>
-                      <td>
-                        <div className="pr-actions">
-                          <button type="button" className="pr-action-btn" onClick={() => { setEditInsumo(ins); setInsumoModal("edit"); }}>{I.edit}</button>
-                          <button type="button" className="pr-action-btn danger" onClick={() => setDeleteInsumo(ins)}>{I.trash}</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  insumosFull.map((ins) => {
+                    const proveedor = proveedores.find(p => p.id === ins.proveedor_id);
+                    return (
+                      <tr key={ins.id}>
+                        <td className="pr-prod-name">{ins.nombre}</td>
+                        <td>{ins.unidad}</td>
+                        <td style={{ textAlign: "right" }}>{ins.cantidad_actual ?? 0}</td>
+                        <td style={{ textAlign: "right" }}>{ins.stock_minimo ?? 0}</td>
+                        <td>
+                          {proveedor ? (
+                            <span className="pr-cat-pill" style={{ background: '#fff7ed', color: '#f97316' }}>
+                              {proveedor.nombreEmpresa}
+                            </span>
+                          ) : (
+                            <span style={{ color: '#9ca3af', fontSize: '0.813rem' }}>Sin proveedor</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="pr-actions">
+                            <button type="button" className="pr-action-btn" onClick={() => { setEditInsumo(ins); setInsumoModal("edit"); }}>{I.edit}</button>
+                            <button type="button" className="pr-action-btn danger" onClick={() => setDeleteInsumo(ins)}>{I.trash}</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+        )}
+
+        {tab === "proveedores" && (
+          <ProveedoresTab 
+            proveedores={proveedores} 
+            setProveedores={setProveedores}
+            abrirModal={abrirModalProveedor}
+            setAbrirModal={setAbrirModalProveedor}
+          />
         )}
       </div>
 
@@ -434,7 +476,12 @@ export default function Productos() {
       )}
 
       {(insumoModal === "new" || insumoModal === "edit") && (
-        <InsumoModal editTarget={insumoModal === "edit" ? editInsumo : null} onClose={() => { setInsumoModal(null); setEditInsumo(null); }} onSave={handleSaveInsumo} />
+        <InsumoModal 
+          editTarget={insumoModal === "edit" ? editInsumo : null}
+          proveedores={proveedores}
+          onClose={() => { setInsumoModal(null); setEditInsumo(null); }} 
+          onSave={handleSaveInsumo} 
+        />
       )}
 
       {deleteInsumo && (
