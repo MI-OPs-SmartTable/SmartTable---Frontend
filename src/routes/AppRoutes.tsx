@@ -49,7 +49,7 @@ const AppRoutes = () => {
           <Route index element={<DashboardHome />} />
           
           <Route path="ventas" element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "cajero", "mesero"]}>
               <VentasPOS />
             </ProtectedRoute>
           } />
