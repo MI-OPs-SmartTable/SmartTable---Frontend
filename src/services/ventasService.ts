@@ -35,18 +35,17 @@ export async function fetchPedido(id: string): Promise<PedidoApi> {
   return apiClient.get<PedidoApi>(`/pedidos/${id}`);
 }
 
-export async function crearPedido(payload: {
-  usuario_id: string;
-  caja_id: string;
-  items: { variante_id: string; cantidad: number }[];
-}): Promise<PedidoApi> {
-  return apiClient.post<PedidoApi>("/pedidos", payload);
-}
-
 export async function registrarVenta(payload: {
   pedido_id: string;
   caja_id: string;
-  pagos: { monto_efectivo: number; monto_transferencia: number };
+  pagos: {
+    monto_efectivo: number;
+    monto_transferencia: number;
+    medio_transferencia_id?: string;
+    banco_nombre?: string;
+    comentario?: string;
+    descripcion_transferencia?: string;
+  };
 }): Promise<VentaApi> {
   return apiClient.post<VentaApi>("/ventas", payload);
 }

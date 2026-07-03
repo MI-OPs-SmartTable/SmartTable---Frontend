@@ -39,9 +39,15 @@ function isSameDay(a: Date, b: Date): boolean {
 const DAY_LABELS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const [ventas, stockBajo, catalogo, categorias] = await Promise.all([
-    fetchVentas(),
-    fetchInsumosStockBajo(),
+  let ventas: VentaApi[] = [];
+  try {
+    ventas = await fetchVentas();
+  } catch {
+    ventas = [];
+  }
+
+  const [stockBajo, catalogo, categorias] = await Promise.all([
+    fetchInsumosStockBajo().catch(() => [] as InsumoStockBajo[]),
     fetchCatalogo(),
     fetchCategorias(),
   ]);

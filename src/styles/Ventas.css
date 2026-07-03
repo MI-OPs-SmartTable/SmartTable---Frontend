@@ -1,16 +1,17 @@
 .ventas-root {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
   gap: 20px;
   align-items: start;
-  height: calc(100vh - 40px);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .ventas-main {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 100%;
+  min-width: 0;
 }
 
 .ventas-search-wrapper {
@@ -46,10 +47,8 @@
 
 .ventas-filtros {
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
+  flex-wrap: wrap;
   gap: 8px;
-  padding-bottom: 4px;
 }
 
 .ventas-filtro {
@@ -75,11 +74,11 @@
 
 .ventas-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr));
   gap: 16px;
-  overflow-y: auto;
   padding-right: 4px;
   padding-bottom: 16px;
+  min-width: 0;
 }
 
 .ventas-producto {
@@ -147,7 +146,6 @@
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
 }
 
@@ -168,6 +166,12 @@
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: all 0.2s;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .ventas-sidebar-tab.active {
@@ -337,10 +341,189 @@
   cursor: not-allowed;
 }
 
-@media (max-width: 900px) {
+.ventas-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--green, #2d7a4f);
+  color: #fff;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  animation: ventasToastIn 0.25s ease-out;
+}
+
+@keyframes ventasToastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ventas-pendientes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ventas-pedido-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--bg, #fafafa);
+}
+
+.ventas-pedido-card.active {
+  border-color: var(--orange);
+  background: #fff7ed;
+}
+
+.ventas-pedido-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.ventas-pedido-mesa {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.ventas-pedido-items {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.ventas-pedido-total {
+  font-weight: 700;
+  color: var(--orange);
+  font-size: 15px;
+}
+
+.ventas-pedido-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ventas-pedido-btn {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.ventas-pedido-btn.primary {
+  background: var(--orange);
+  color: #fff;
+  border-color: var(--orange);
+}
+
+.ventas-pedido-btn.danger {
+  color: var(--err);
+  border-color: rgba(192, 57, 43, 0.3);
+}
+
+.ventas-edit-panel {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.ventas-pago-modal .caja-modal-field select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.ventas-pago-resumen {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.ventas-pago-resumen-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 4px 0;
+  color: #4b5563;
+}
+
+.ventas-pago-resumen-row.descuento {
+  color: var(--green, #2d7a4f);
+}
+
+.ventas-pago-resumen-row.total {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+  font-weight: 700;
+  font-size: 16px;
+  color: #111;
+}
+
+.ventas-pago-metodos {
+  margin-bottom: 16px;
+}
+
+.ventas-pago-metodos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.ventas-pago-metodo {
+  padding: 10px 8px;
+  border-radius: 8px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+
+.ventas-pago-metodo.active {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: #fff7ed;
+}
+
+.ventas-pago-error-inline {
+  margin: 0;
+  font-size: 12px;
+  color: var(--err);
+}
+
+.ventas-pago-mixto {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 1100px) {
   .ventas-root {
     grid-template-columns: 1fr;
-    height: auto;
+  }
+}
+@media (max-width: 700px) {
+  .ventas-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr));
   }
 }
 

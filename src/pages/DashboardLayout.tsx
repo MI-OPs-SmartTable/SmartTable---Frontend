@@ -1,7 +1,10 @@
+import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { apiLogout } from "../auth/authService";
 import { usePosSession } from "../context/PosSessionContext";
+import { cerrarCaja } from "../services/cajaService";
 import "../styles/Dashboard.css";
+
 
 // ============================================
 // ICONOS
@@ -16,6 +19,8 @@ const Ic = {
   chev: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,
   logout: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
   config: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
+  menu: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
+  close: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
 };
 
 // CONFIGURACIÓN DEL MENÚ POR ROL
@@ -40,19 +45,55 @@ const getRolLabel = (rol: string) => {
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { usuario } = usePosSession();
+  const { usuario, cajaId, cajaAbierta, setCajaFromResponse } = usePosSession();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [lastPath, setLastPath] = useState(location.pathname);
+  const mainRef = useRef<HTMLElement>(null);
   const userName = usuario?.nombre_completo ?? "";
   const rol = usuario?.rol ?? null;
 
+  if (location.pathname !== lastPath) {
+    setLastPath(location.pathname);
+    setMenuOpen(false);
+  }
+
   const handleLogout = async () => {
+    setMenuOpen(false);
+    try {
+      if (cajaAbierta && cajaId) {
+        await cerrarCaja(cajaId);
+        setCajaFromResponse(null);
+      }
+    } catch {
+      /* el backend también cierra la caja en /auth/logout */
+    }
     await apiLogout();
     window.location.href = "/login";
   };
 
-
   const navItems = rol ? ALL_NAV_ITEMS.filter((item) => item.roles.includes(rol)) : [];
 
-  // Mostrar título en dashboard
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  const goTo = (path: string) => {
+    navigate(path);
+    setMenuOpen(false);
+    mainRef.current?.scrollTo(0, 0);
+  };
+
+  const currentPageLabel =
+    navItems.find((item) => item.id === location.pathname)?.label ?? "SmarTable";
+
   const showHeader = location.pathname === "/dashboard";
 
   // Obtener inicial para el avatar
@@ -66,7 +107,40 @@ export default function DashboardLayout() {
 
   return (
     <div className="db-root">
-      <aside className="db-sidebar">
+      <header className="db-mobile-header">
+        <button
+          type="button"
+          className="db-menu-btn"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Abrir menú"
+        >
+          {Ic.menu}
+        </button>
+        <div className="db-mobile-header-text">
+          <span className="db-mobile-title">SmarTable</span>
+          <span className="db-mobile-subtitle">{currentPageLabel}</span>
+        </div>
+      </header>
+
+      {menuOpen && (
+        <button
+          type="button"
+          className="db-sidebar-overlay"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Cerrar menú"
+        />
+      )}
+
+      <aside className={`db-sidebar${menuOpen ? " open" : ""}`}>
+        <button
+          type="button"
+          className="db-sidebar-close"
+          onClick={() => setMenuOpen(false)}
+          aria-label="Cerrar menú"
+        >
+          {Ic.close}
+        </button>
+
         <div className="db-brand">
           <div className="db-brand-icon">{Ic.pos}</div>
           <div>
@@ -79,8 +153,9 @@ export default function DashboardLayout() {
           {navItems.map((item) => (
             <button
               key={item.id}
+              type="button"
               className={`db-nav-item ${location.pathname === item.id ? "active" : ""}`}
-              onClick={() => navigate(item.id)}
+              onClick={() => goTo(item.id)}
             >
               {item.icon}
               {item.label}
@@ -98,7 +173,7 @@ export default function DashboardLayout() {
         </div>
       </aside>
 
-      <main className="db-main">
+      <main ref={mainRef} className="db-main">
         {showHeader && (
           <div className="db-page-title">Dashboard</div>
         )}

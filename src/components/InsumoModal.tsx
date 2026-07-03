@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { InsumoCompleto } from "../services/insumosService";
+import type { Proveedor } from "../pages/dashboard/types/proveedores.types";
 
 const UNIDADES = ["unidad", "porción", "gramos", "kg", "ml", "litro", "tajada"];
 
@@ -9,15 +10,23 @@ const I = {
 
 interface Props {
   editTarget: InsumoCompleto | null;
+  proveedores: Proveedor[];
   onClose: () => void;
-  onSave: (data: { nombre: string; unidad: string; cantidad_actual?: number; stock_minimo?: number }) => Promise<void>;
+  onSave: (data: { 
+    nombre: string; 
+    unidad: string; 
+    cantidad_actual?: number; 
+    stock_minimo?: number;
+    proveedor_id?: string;
+  }) => Promise<void>;
 }
 
-export default function InsumoModal({ editTarget, onClose, onSave }: Props) {
+export default function InsumoModal({ editTarget, proveedores, onClose, onSave }: Props) {
   const [nombre, setNombre] = useState(editTarget?.nombre ?? "");
   const [unidad, setUnidad] = useState(editTarget?.unidad ?? "unidad");
   const [stock, setStock] = useState(String(editTarget?.cantidad_actual ?? 100));
   const [stockMin, setStockMin] = useState(String(editTarget?.stock_minimo ?? 10));
+  const [proveedorId, setProveedorId] = useState(editTarget?.proveedor_id ?? "");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -39,6 +48,7 @@ export default function InsumoModal({ editTarget, onClose, onSave }: Props) {
         unidad: unidad.trim(),
         cantidad_actual: Number(stock) || 0,
         stock_minimo: Number(stockMin) || 0,
+        proveedor_id: proveedorId || undefined,
       });
       onClose();
     } catch (err) {
@@ -58,10 +68,12 @@ export default function InsumoModal({ editTarget, onClose, onSave }: Props) {
         <form onSubmit={handleSubmit}>
           <div className="pr-modal-body">
             {error && <p className="pr-field-error">{error}</p>}
+            
             <div className="pr-form-group">
               <label>Nombre</label>
               <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Pan de hamburguesa" autoFocus />
             </div>
+            
             <div className="pr-form-group">
               <label>Unidad de medida</label>
               <select value={unidad} onChange={(e) => setUnidad(e.target.value)}>
@@ -76,6 +88,7 @@ export default function InsumoModal({ editTarget, onClose, onSave }: Props) {
                 placeholder="O escriba otra unidad"
               />
             </div>
+            
             <div className="pr-field-row">
               <div className="pr-form-group">
                 <label>Stock actual</label>
@@ -86,7 +99,18 @@ export default function InsumoModal({ editTarget, onClose, onSave }: Props) {
                 <input type="number" min={0} value={stockMin} onChange={(e) => setStockMin(e.target.value)} />
               </div>
             </div>
+
+            <div className="pr-form-group">
+              <label>Proveedor</label>
+              <select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>
+                <option value="">Sin proveedor</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombreEmpresa}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          
           <div className="pr-modal-footer">
             <button type="button" className="pr-btn-cancel" onClick={onClose}>Cancelar</button>
             <button type="submit" className="pr-btn-submit" disabled={saving}>

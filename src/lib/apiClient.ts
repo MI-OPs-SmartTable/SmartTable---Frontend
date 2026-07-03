@@ -5,7 +5,7 @@ const baseUrl = import.meta.env.VITE_API_URL as string | undefined;
 function resolveBaseUrl(): string {
   if (!baseUrl || !baseUrl.trim()) {
     throw new Error(
-      "VITE_API_URL no está definida. Crea SmartTable---Frontend/.env con VITE_API_URL=http://localhost:8080/api"
+      "VITE_API_URL no está definida. Crea .env en la raíz del frontend tomando .env.example como guía"
     );
   }
   return baseUrl.replace(/\/$/, "");

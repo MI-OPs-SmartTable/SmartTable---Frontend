@@ -2,36 +2,15 @@
 // TAB RESTAURANTE - GESTIÓN DE UBICACIONES Y MESAS
 // ============================================
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ubicacionesService } from "../../services/ubicacionesService";
+import { mesasService } from "../../services/mesasService";
 
 const ORANGE = "#F97316";
 const ORANGE_LIGHT = "#FFF7ED";
 const ORANGE_BORDER = "#FDBA74";
 
-const initialLocations = [
-  {
-    id: 1,
-    name: "Salón Principal",
-    tables: [
-      { id: 1, name: "Mesa 1" },
-      { id: 2, name: "Mesa 2" },
-      { id: 3, name: "Mesa 3" },
-      { id: 4, name: "Mesa 4" },
-      { id: 5, name: "Mesa 5" },
-      { id: 6, name: "Mesa 6" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Terraza",
-    tables: [
-      { id: 7, name: "Mesa 7" },
-      { id: 8, name: "Mesa 8" },
-      { id: 9, name: "Mesa 9" },
-      { id: 10, name: "Mesa 10" },
-    ],
-  },
-];
+const initialLocations: { id: string; name: string; tables: { id: string; name: string }[] }[] = [];
 
 
 
@@ -242,6 +221,7 @@ function NewLocationModal({ onSave, onClose }: any) {
       .split(",")
       .map((t: string) => t.trim())
       .filter(Boolean);
+    if (tableNames.length === 0) return;
     onSave(name.trim(), tableNames);
   }
 
@@ -251,7 +231,7 @@ function NewLocationModal({ onSave, onClose }: any) {
       onClose={onClose}
       onSave={handleSave}
       saveLabel="Guardar"
-      canSave={name.trim().length > 0}
+      canSave={name.trim().length > 0 && tables.split(",").map((t: string) => t.trim()).filter(Boolean).length > 0}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
@@ -310,50 +290,111 @@ function EditModal({ title, value, onSave, onClose }: any) {
 export default function RestauranteTab() {
   const [locations, setLocations] = useState(initialLocations);
   const [modal, setModal] = useState<any>(null);
-  const [nextId, setNextId] = useState(100);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadLocations = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [ubi, mesas] = await Promise.all([
+        ubicacionesService.getAll() as Promise<{ id: string; nombre: string }[]>,
+        mesasService.getAll() as Promise<{ id: string; ubicacion_id: string; nombre: string }[]>,
+      ]);
+      setLocations(
+        ubi.map((u) => ({
+          id: u.id,
+          name: u.nombre,
+          tables: mesas.filter((m) => m.ubicacion_id === u.id).map((m) => ({ id: m.id, name: m.nombre })),
+        }))
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al cargar ubicaciones");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadLocations();
+  }, [loadLocations]);
 
   const totalTables = locations.reduce((s, l) => s + l.tables.length, 0);
 
   function openModal(config: any) { setModal(config); }
   function closeModal() { setModal(null); }
 
-  function handleSave(newVal: string) {
+  async function handleSave(newVal: string) {
     const { type, locationId, tableId } = modal;
-    if (type === "editLocation") {
-      setLocations((prev: any) => prev.map((l: any) => l.id === locationId ? { ...l, name: newVal } : l));
-    } else if (type === "editTable") {
-      setLocations((prev: any) => prev.map((l: any) => l.id === locationId
-        ? { ...l, tables: l.tables.map((t: any) => t.id === tableId ? { ...t, name: newVal } : t) }
-        : l));
-    } else if (type === "addTable") {
-      setLocations((prev: any) => prev.map((l: any) => l.id === locationId
-        ? { ...l, tables: [...l.tables, { id: nextId, name: newVal }] }
-        : l));
-      setNextId((n: number) => n + 1);
+    setError("");
+    try {
+      if (type === "editLocation") {
+        await ubicacionesService.update(locationId, { nombre: newVal });
+      } else if (type === "editTable") {
+        await mesasService.update(tableId, { nombre: newVal });
+      } else if (type === "addTable") {
+        await mesasService.create({ ubicacion_id: locationId, nombre: newVal });
+      }
+      await loadLocations();
+      closeModal();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al guardar");
     }
-    closeModal();
   }
 
-  function handleAddLocation(name: string, tableNames: string[]) {
-    const newTables = tableNames.map((tName, i) => ({ id: nextId + i, name: tName }));
-    setLocations((prev: any) => [...prev, { id: nextId + tableNames.length, name, tables: newTables }]);
-    setNextId((n: number) => n + tableNames.length + 1);
-    closeModal();
+  async function handleAddLocation(name: string, tableNames: string[]) {
+    if (tableNames.length === 0) {
+      setError("Debes agregar al menos una mesa");
+      return;
+    }
+    setError("");
+    try {
+      const ubicacion = await ubicacionesService.create({ nombre: name }) as { id: string };
+      for (const tableName of tableNames) {
+        await mesasService.create({ ubicacion_id: ubicacion.id, nombre: tableName });
+      }
+      await loadLocations();
+      closeModal();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al crear ubicación");
+    }
   }
 
-  function deleteLocation(locationId: number) {
-    if (confirm("¿Eliminar esta ubicación y todas sus mesas?"))
-      setLocations((prev: any) => prev.filter((l: any) => l.id !== locationId));
+  async function deleteLocation(locationId: string) {
+    if (!confirm("¿Eliminar esta ubicación y todas sus mesas?")) return;
+    setError("");
+    try {
+      const loc = locations.find((l) => l.id === locationId);
+      if (loc) {
+        for (const table of loc.tables) {
+          await mesasService.delete(table.id);
+        }
+      }
+      await ubicacionesService.delete(locationId);
+      await loadLocations();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al eliminar ubicación");
+    }
   }
 
-  function deleteTable(locationId: number, tableId: number) {
-    setLocations((prev: any) => prev.map((l: any) => l.id === locationId
-      ? { ...l, tables: l.tables.filter((t: any) => t.id !== tableId) }
-      : l));
+  async function deleteTable(_locationId: string, tableId: string) {
+    if (!confirm("¿Eliminar esta mesa?")) return;
+    setError("");
+    try {
+      await mesasService.delete(tableId);
+      await loadLocations();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error al eliminar mesa");
+    }
+  }
+
+  if (loading) {
+    return <p style={{ color: "#6b7280" }}>Cargando restaurante...</p>;
   }
 
   return (
     <div>
+      {error && <p style={{ color: "#c0392b", fontSize: 14, marginBottom: 16 }}>{error}</p>}
       {/* Summary bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <span style={{ fontSize: 14, color: "#6b7280" }}>

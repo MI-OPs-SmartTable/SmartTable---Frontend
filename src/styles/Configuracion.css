@@ -35,7 +35,8 @@ body {
   background: var(--sand);
   font-family: "Figtree", sans-serif;
   color: var(--bark);
-
+  min-width: 0;
+  max-width: 100%;
 }
 
 .cfg-title {
@@ -730,6 +731,11 @@ body {
   gap: 4px;
   border-bottom: 2px solid #f0f0f0;
   margin-bottom: 24px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .cfg-tab {
@@ -746,6 +752,8 @@ body {
   border-bottom: 2.5px solid transparent;
   margin-bottom: -2px;
   transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .cfg-tab:hover {
@@ -970,6 +978,13 @@ body {
    RESPONSIVE
    ============================================ */
 
+@media (max-width: 900px) {
+  .cfg-tab {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+}
+
 @media (max-width: 640px) {
   .cfg-root {
     padding: 16px;
@@ -979,15 +994,10 @@ body {
     font-size: 22px;
   }
 
-  .cfg-tabs {
-    overflow-x: auto;
-    gap: 0;
-  }
-
   .cfg-tab {
-    padding: 10px 14px;
-    font-size: 13px;
-    white-space: nowrap;
+    padding: 10px 12px;
+    font-size: 12px;
+    gap: 6px;
   }
 
   .cfg-card {
