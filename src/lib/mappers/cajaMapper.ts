@@ -1,4 +1,5 @@
 import type { CierreCaja } from "../../pages/dashboard/types/caja.types";
+import type { VentaApi } from "../../services/ventasService";
 
 type ApiCaja = {
   id: string;
@@ -21,7 +22,7 @@ function parseSqliteDate(value: string): Date {
 export function mapCajaHistorialItem(
   caja: ApiCaja,
   usuarioNombre: string,
-  totalVendido: number
+  ventasCaja: VentaApi[]
 ): CierreCaja {
   const cierreAt = caja.cierre_at ? parseSqliteDate(caja.cierre_at) : parseSqliteDate(caja.apertura_at);
   const fecha = cierreAt.toLocaleDateString("es-CO", {
@@ -35,15 +36,23 @@ export function mapCajaHistorialItem(
     hour12: true,
   });
 
+  const total = ventasCaja.reduce((sum, v) => sum + Number(v.total), 0);
+  const montoEfectivo = ventasCaja.reduce((sum, v) => sum + Number(v.monto_efectivo), 0);
+  const montoTransferencia = ventasCaja.reduce(
+    (sum, v) => sum + Number(v.monto_transferencia),
+    0
+  );
+
   return {
     id: caja.id,
     fecha,
+    fechaRaw: cierreAt.toISOString().split("T")[0],
     diaSemana: DIAS[cierreAt.getDay()],
     cerradoPor: usuarioNombre,
     hora,
-    total: totalVendido,
-    montoEfectivo: 0,
-    montoTransferencia: 0,
+    total,
+    montoEfectivo,
+    montoTransferencia,
   };
 }
 
