@@ -37,10 +37,7 @@ export default function CajaHistorial({ historial }: Props) {
   const toggleExpand = (id: string) => setExpandedId(expandedId === id ? null : id);
 
   const filtrado = fechaFiltro
-    ? historial.filter((c) => {
-        const d = new Date(fechaFiltro);
-        return c.fecha.includes(d.getDate().toString());
-      })
+    ? historial.filter((c) => c.fechaRaw === fechaFiltro)
     : historial;
 
   return (
@@ -57,7 +54,10 @@ export default function CajaHistorial({ historial }: Props) {
         </div>
       </div>
 
-      {filtrado.map((cierre, idx) => (
+      {filtrado.length === 0 ? (
+        <p className="caja-historial-empty">Sin cierres registrados</p>
+      ) : (
+        filtrado.map((cierre, idx) => (
         <div key={cierre.id}>
           {idx > 0 && <div className="caja-historial-divider" />}
 
@@ -99,7 +99,8 @@ export default function CajaHistorial({ historial }: Props) {
             )}
           </div>
         </div>
-      ))}
+      ))
+      )}
     </div>
   );
 }

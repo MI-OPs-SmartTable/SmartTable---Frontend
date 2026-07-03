@@ -2,6 +2,7 @@
 export interface CierreCaja {
   id: string;
   fecha: string;
+  fechaRaw: string;
   diaSemana: string;
   cerradoPor: string;
   hora: string;
