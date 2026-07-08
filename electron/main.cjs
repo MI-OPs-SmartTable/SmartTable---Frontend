@@ -19,7 +19,8 @@ function resolveBackendRoot() {
     return path.resolve(process.env.SMARTTABLE_BACKEND_PATH);
   }
 
-  return path.resolve(__dirname, '../../SmartTable---Backend-nog');
+  // Legacy fallback kept for old local setups.
+  return path.resolve(__dirname, '../../SmartTable---Backend');
 }
 
 function getBackendRoot() {
@@ -29,8 +30,9 @@ function getBackendRoot() {
 
   const backendRoot = resolveBackendRoot();
   if (!fs.existsSync(backendRoot)) {
+    const recommendedPath = path.resolve(__dirname, '../../SmartTable---Backend');
     throw new Error(
-      `No se encontró el backend en: ${backendRoot}. Configura SMARTTABLE_BACKEND_PATH en .env`
+      `No se encontró el backend en: ${backendRoot}. Configura SMARTTABLE_BACKEND_PATH en .env (ejemplo recomendado: ${recommendedPath})`
     );
   }
 
@@ -57,13 +59,28 @@ function getDatabasePath() {
   return path.join(app.getPath('userData'), 'pos.db');
 }
 
+function getUserDataPaths() {
+  const userData = app.getPath('userData');
+
+  return {
+    userData,
+    configPath: path.join(userData, 'backup-config.json'),
+    backupDir: path.join(userData, 'backups'),
+    credentialsPath: path.join(userData, 'credentials', 'google-service-account.json'),
+  };
+}
+
 function buildBackendEnv() {
   const backendRoot = getBackendRoot();
   const frontendDist = getFrontendDist();
+  const { configPath, backupDir, credentialsPath } = getUserDataPaths();
   const env = {
     ...process.env,
     PORT: String(PORT),
     DB_PATH: getDatabasePath(),
+    CONFIG_PATH: configPath,
+    BACKUP_LOCAL_DIR: backupDir,
+    GOOGLE_DRIVE_CREDENTIALS_PATH: credentialsPath,
     environment: 'PRODUCTION',
     SMARTTABLE_AUTO_SEED: '1',
     JWT_SECRET_PRODUCTION: process.env.JWT_SECRET_PRODUCTION || 'smarttable-desktop-secret-change-me',
@@ -227,7 +244,10 @@ function stopBackendProcess() {
 }
 
 app.whenReady().then(async () => {
+  const { backupDir, credentialsPath } = getUserDataPaths();
   fs.mkdirSync(path.dirname(getDatabasePath()), { recursive: true });
+  fs.mkdirSync(backupDir, { recursive: true });
+  fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
 
   try {
     startBackendProcess();

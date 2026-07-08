@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { clearSession, isSessionValid } from "../auth/authService";
 import { PosSessionProvider } from "../context/PosSessionContext";
 import LoginPage from "../pages/LoginPage";
 import DashboardLayout from "../pages/DashboardLayout";
@@ -14,25 +15,43 @@ interface ProtectedRouteProps {
   allowedRoles: string[];
 }
 
+function decodeJwtPayload(token: string): { rol?: string; exp?: number } | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) {
+      return null;
+    }
+
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const normalized = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    return JSON.parse(atob(normalized));
+  } catch {
+    return null;
+  }
+}
+
 function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const token = localStorage.getItem("pos_auth_token");
   
-  if (!token) {
+  if (!token || !isSessionValid()) {
+    clearSession();
     return <Navigate to="/login" replace />;
   }
-  
-  try {
 
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const userRole = payload.rol;
-    
-    if (!allowedRoles.includes(userRole)) {
-      
-      return <Navigate to="/dashboard" replace />;
-    }
-  } catch (error) {
-    console.error("Error decodificando token:", error);
+  const payload = decodeJwtPayload(token);
+  if (!payload) {
+    clearSession();
     return <Navigate to="/login" replace />;
+  }
+
+  if (typeof payload.exp === "number" && payload.exp * 1000 <= Date.now()) {
+    clearSession();
+    return <Navigate to="/login" replace />;
+  }
+
+  const userRole = payload.rol;
+  if (!userRole || !allowedRoles.includes(userRole)) {
+    return <Navigate to="/dashboard" replace />;
   }
   
   return children;

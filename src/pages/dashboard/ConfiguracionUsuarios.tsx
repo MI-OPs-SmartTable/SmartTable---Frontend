@@ -14,6 +14,7 @@ import DeleteConfirm from "../../components/DeleteConfirmUsuario";
 import "../../styles/Configuracion.css";
 import RestauranteTab from "./RestauranteTab";
 import EntidadesBancariasTab from "./EntidadesBancariasTab";
+import RespaldoTab from "./RespaldoTab";
 
 
 const I = {
@@ -72,6 +73,11 @@ const I = {
       <polygon points="12 2 20 7 4 7" />
     </svg>
   ),
+  cloud: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" />
+    </svg>
+  ),
 };
 
 
@@ -85,7 +91,7 @@ export default function Configuracion() {
   const [deleteTarget, setDeleteTarget] = useState<Usuario | null>(null);
 
   // Estado de tabs
-  const [activeTab, setActiveTab] = useState<"usuarios" | "restaurante" | "bancarias">("usuarios");
+  const [activeTab, setActiveTab] = useState<"usuarios" | "restaurante" | "bancarias" | "respaldo">("usuarios");
 
   // Cargar usuarios desde BD
   useEffect(() => {
@@ -140,6 +146,8 @@ export default function Configuracion() {
         return <RestauranteTab />;
       case "bancarias":
         return <EntidadesBancariasTab />;
+      case "respaldo":
+        return <RespaldoTab />;
       default:
         return null;
     }
@@ -245,7 +253,7 @@ export default function Configuracion() {
   return (
     <div className="cfg-root">
       <h1 className="cfg-title">Configuración</h1>
-      <p className="cfg-sub">Gestiona usuarios, restaurante y entidades bancarias</p>
+      <p className="cfg-sub">Gestiona usuarios, restaurante, entidades bancarias y respaldos</p>
 
       {/* Tabs */}
       <div className="cfg-tabs">
@@ -269,6 +277,13 @@ export default function Configuracion() {
         >
           <span className="cfg-tab-icon">{I.bank}</span>
           Entidades Bancarias
+        </button>
+        <button
+          className={`cfg-tab ${activeTab === "respaldo" ? "active" : ""}`}
+          onClick={() => setActiveTab("respaldo")}
+        >
+          <span className="cfg-tab-icon">{I.cloud}</span>
+          Respaldo
         </button>
       </div>
 

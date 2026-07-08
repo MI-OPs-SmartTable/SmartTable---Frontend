@@ -4,9 +4,11 @@ const baseUrl = import.meta.env.VITE_API_URL as string | undefined;
 
 function resolveBaseUrl(): string {
   if (!baseUrl || !baseUrl.trim()) {
-    throw new Error(
-      "VITE_API_URL no está definida. Crea .env en la raíz del frontend tomando .env.example como guía"
-    );
+    // Fallback seguro para evitar romper toda la app cuando falta .env local.
+    if (typeof window !== "undefined") {
+      console.warn("VITE_API_URL no está definida; usando fallback '/api'.");
+    }
+    return "/api";
   }
   return baseUrl.replace(/\/$/, "");
 }
