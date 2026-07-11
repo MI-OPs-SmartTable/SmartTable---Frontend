@@ -59,3 +59,41 @@ export async function crearGastoCaja(payload: {
 }): Promise<GastoCajaApi> {
   return apiClient.post<GastoCajaApi>("/gastos-caja", payload);
 }
+
+export type SesionApi = {
+  id: string;
+  usuario_id: string;
+  caja_id: string;
+  rol_sesion: string;
+  inicio_at: string;
+  fin_at: string | null;
+};
+
+export type ColaboradorApi = {
+  sesion_id: string;
+  usuario_id: string;
+  caja_id: string;
+  rol_sesion: string;
+  inicio_at: string;
+  fin_at: string | null;
+  nombre_completo: string;
+  email: string;
+  rol: string;
+};
+
+export async function fetchColaboradores(cajaId: string): Promise<ColaboradorApi[]> {
+  const data = await apiClient.get<{ caja: CajaApi; colaboradores: ColaboradorApi[] }>(
+    `/cajas/${cajaId}/colaboradores`
+  );
+  return data.colaboradores;
+}
+
+export async function agregarColaborador(cajaId: string, usuarioId: string): Promise<SesionApi> {
+  return apiClient.post<SesionApi>(`/cajas/${cajaId}/colaboradores`, {
+    usuario_id: usuarioId,
+  });
+}
+
+export async function cerrarSesion(sesionId: string): Promise<SesionApi> {
+  return apiClient.post<SesionApi>(`/sesiones/${sesionId}/cerrar`, {});
+}

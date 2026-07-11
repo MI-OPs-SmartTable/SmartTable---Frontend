@@ -7,6 +7,7 @@ import {
   type GastoCajaApi,
 } from "../services/cajaService";
 import { fetchVentas, type VentaApi } from "../services/ventasService";
+import ColaboradoresCaja from "./ColaboradoresCaja";
 import "../styles/Caja.css";
 
 interface CajaActivaProps {
@@ -262,6 +263,8 @@ export default function CajaActiva({ caja, usuarioId }: CajaActivaProps) {
             )}
           </div>
         </div>
+
+        <ColaboradoresCaja cajaId={caja.id} titularId={usuarioId} />
       </div>
     </div>
   );
