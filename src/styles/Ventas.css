@@ -292,10 +292,19 @@
 .ventas-carrito-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
   font-size: 14px;
+  gap: 12px;
+}
+
+.ventas-carrito-item-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .ventas-carrito-qty {
@@ -314,6 +323,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ventas-carrito-nota {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.ventas-carrito-nota::placeholder {
+  color: var(--muted);
+}
+
+.ventas-carrito-nota:focus {
+  border-color: var(--orange);
 }
 
 .ventas-total {
@@ -452,6 +482,82 @@
   border-radius: 10px;
   padding: 14px;
   margin-bottom: 18px;
+}
+
+.ventas-pago-pedido-resumen {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.ventas-pago-pedido-resumen-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.ventas-pago-pedido-resumen-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ventas-pago-pedido-resumen-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.ventas-pago-pedido-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ventas-pago-pedido-item {
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.ventas-pago-pedido-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.ventas-pago-pedido-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ventas-pago-pedido-item-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: #111827;
+}
+
+.ventas-pago-pedido-item-line strong {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ventas-pago-pedido-item-nota {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #2563eb;
+  background: #eff6ff;
+  border-radius: 8px;
+  padding: 6px 8px;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .ventas-pago-resumen-row {

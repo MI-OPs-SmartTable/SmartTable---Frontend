@@ -15,6 +15,7 @@ import {
   registrarVenta,
   totalPedido,
   type PedidoApi,
+  type PedidoItemPayload,
 } from "../../services/ventasService";
 import { fetchInsumosStockBajo, type InsumoStockBajo } from "../../services/insumosService";
 import { ubicacionesService } from "../../services/ubicacionesService";
@@ -25,14 +26,33 @@ import "../../styles/Dashboard.css";
 import "../../styles/Ventas.css";
 
 type CartItem = {
+  id: string;
   variante_id: string;
   nombre: string;
   precio: number;
   cantidad: number;
+  nota: string;
 };
 
 type UbicacionApi = { id: string; nombre: string };
 type MesaApi = { id: string; ubicacion_id: string; nombre: string };
+
+function createCartLineId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeNota(nota: string): string {
+  return nota.trim();
+}
+
+function toPedidoItemPayload(item: CartItem): PedidoItemPayload {
+  const nota = normalizeNota(item.nota);
+  return {
+    variante_id: item.variante_id,
+    cantidad: item.cantidad,
+    ...(nota ? { nota } : {}),
+  };
+}
 
 const MESA_POR_COBRAR_MSG = "La mesa ya tiene un pedido pendiente por cobrar";
 
@@ -114,6 +134,13 @@ export default function VentasPOS() {
     return totalPedido(pedidoActivo);
   }, [pedidoActivo]);
 
+  const pedidoCobroTitulo = useMemo(() => {
+    if (!pedidoActivo) return "Pedido a cobrar";
+    const mesa = mesas.find((m) => m.id === pedidoActivo.mesa_id);
+    const salon = mesa ? ubicaciones.find((u) => u.id === mesa.ubicacion_id) : null;
+    return `${mesa?.nombre ?? "Mesa"} · ${salon?.nombre ?? "Salón"}`;
+  }, [pedidoActivo, mesas, ubicaciones]);
+
   const loadPendientes = useCallback(async () => {
     if (!cajaId) {
       setPedidosPendientes([]);
@@ -185,17 +212,26 @@ export default function VentasPOS() {
   };
 
   const addToCart = (item: CatalogoItem) => {
+    const nuevaLinea = {
+      id: createCartLineId(),
+      variante_id: item.variante_id,
+      nombre: item.nombre,
+      precio: item.precio,
+      cantidad: 1,
+      nota: "",
+    };
+
     if (pedidoEnEdicion) {
       if (!cajaAbierta) return;
       setError("");
       setEditCart((prev) => {
-        const existing = prev.find((c) => c.variante_id === item.variante_id);
+        const existing = prev.find((c) => c.variante_id === item.variante_id && !normalizeNota(c.nota));
         if (existing) {
           return prev.map((c) =>
-            c.variante_id === item.variante_id ? { ...c, cantidad: c.cantidad + 1 } : c
+            c.id === existing.id ? { ...c, cantidad: c.cantidad + 1 } : c
           );
         }
-        return [...prev, { variante_id: item.variante_id, nombre: item.nombre, precio: item.precio, cantidad: 1 }];
+        return [...prev, nuevaLinea];
       });
       return;
     }
@@ -210,23 +246,28 @@ export default function VentasPOS() {
     }
     setError("");
     setCart((prev) => {
-      const existing = prev.find((c) => c.variante_id === item.variante_id);
+      const existing = prev.find((c) => c.variante_id === item.variante_id && !normalizeNota(c.nota));
       if (existing) {
         return prev.map((c) =>
-          c.variante_id === item.variante_id ? { ...c, cantidad: c.cantidad + 1 } : c
+          c.id === existing.id ? { ...c, cantidad: c.cantidad + 1 } : c
         );
       }
-      return [...prev, { variante_id: item.variante_id, nombre: item.nombre, precio: item.precio, cantidad: 1 }];
+      return [...prev, nuevaLinea];
     });
   };
 
-  const updateQty = (varianteId: string, delta: number, target: "cart" | "edit" = "cart") => {
+  const updateQty = (lineId: string, delta: number, target: "cart" | "edit" = "cart") => {
     const setter = target === "cart" ? setCart : setEditCart;
     setter((prev) =>
       prev
-        .map((c) => (c.variante_id === varianteId ? { ...c, cantidad: c.cantidad + delta } : c))
+        .map((c) => (c.id === lineId ? { ...c, cantidad: c.cantidad + delta } : c))
         .filter((c) => c.cantidad > 0)
     );
+  };
+
+  const updateNota = (lineId: string, nota: string, target: "cart" | "edit" = "cart") => {
+    const setter = target === "cart" ? setCart : setEditCart;
+    setter((prev) => prev.map((c) => (c.id === lineId ? { ...c, nota } : c)));
   };
 
   const confirmarPedido = async () => {
@@ -242,7 +283,7 @@ export default function VentasPOS() {
         usuario_id: usuario.id,
         caja_id: cajaId,
         mesa_id: mesaId,
-        items: cart.map((c) => ({ variante_id: c.variante_id, cantidad: c.cantidad })),
+        items: cart.map(toPedidoItemPayload),
       });
       setCart([]);
       setUbicacionId("");
@@ -269,10 +310,12 @@ export default function VentasPOS() {
     }
     setEditCart(
       (pedido.items ?? []).map((item) => ({
+        id: item.id,
         variante_id: item.variante_id,
         nombre: item.variante_nombre ?? "Producto",
         precio: Number(item.precio_unitario),
         cantidad: Number(item.cantidad),
+        nota: item.nota ?? "",
       }))
     );
     setTabSidebar("nuevo");
@@ -285,7 +328,7 @@ export default function VentasPOS() {
     try {
       await actualizarPedidoItems(
         pedidoEnEdicion.id,
-        editCart.map((c) => ({ variante_id: c.variante_id, cantidad: c.cantidad }))
+        editCart.map(toPedidoItemPayload)
       );
       resetNuevoPedido();
       await loadPendientes();
@@ -519,15 +562,24 @@ export default function VentasPOS() {
                   <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                     <div style={{ flex: 1, overflowY: "auto", borderTop: "1px solid var(--line)" }}>
                       {editCart.map((item) => (
-                        <div key={item.variante_id} className="ventas-carrito-item">
-                          <div>
-                            <div style={{ fontWeight: 500, color: "var(--text)" }}>{item.nombre}</div>
-                            <div style={{ fontSize: 13, color: "var(--orange)" }}>{fmt(item.precio)} c/u</div>
+                        <div key={item.id} className="ventas-carrito-item">
+                          <div className="ventas-carrito-item-main">
+                            <div>
+                              <div style={{ fontWeight: 500, color: "var(--text)" }}>{item.nombre}</div>
+                              <div style={{ fontSize: 13, color: "var(--orange)" }}>{fmt(item.precio)} c/u</div>
+                            </div>
+                            <input
+                              className="ventas-carrito-nota"
+                              type="text"
+                              value={item.nota}
+                              placeholder="Nota / sin ingrediente"
+                              onChange={(e) => updateNota(item.id, e.target.value, "edit")}
+                            />
                           </div>
                           <div className="ventas-carrito-qty">
-                            <button type="button" onClick={() => updateQty(item.variante_id, -1, "edit")}>−</button>
+                            <button type="button" onClick={() => updateQty(item.id, -1, "edit")}>−</button>
                             <span>{item.cantidad}</span>
-                            <button type="button" onClick={() => updateQty(item.variante_id, 1, "edit")}>+</button>
+                            <button type="button" onClick={() => updateQty(item.id, 1, "edit")}>+</button>
                           </div>
                         </div>
                       ))}
@@ -549,15 +601,24 @@ export default function VentasPOS() {
                 <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                   <div style={{ flex: 1, overflowY: "auto", borderTop: "1px solid var(--line)" }}>
                     {cart.map((item) => (
-                      <div key={item.variante_id} className="ventas-carrito-item">
-                        <div>
-                          <div style={{ fontWeight: 500, color: "var(--text)" }}>{item.nombre}</div>
-                          <div style={{ fontSize: 13, color: "var(--orange)" }}>{fmt(item.precio)} c/u</div>
+                      <div key={item.id} className="ventas-carrito-item">
+                        <div className="ventas-carrito-item-main">
+                          <div>
+                            <div style={{ fontWeight: 500, color: "var(--text)" }}>{item.nombre}</div>
+                            <div style={{ fontSize: 13, color: "var(--orange)" }}>{fmt(item.precio)} c/u</div>
+                          </div>
+                          <input
+                            className="ventas-carrito-nota"
+                            type="text"
+                            value={item.nota}
+                            placeholder="Nota / sin ingrediente"
+                            onChange={(e) => updateNota(item.id, e.target.value)}
+                          />
                         </div>
                         <div className="ventas-carrito-qty">
-                          <button type="button" onClick={() => updateQty(item.variante_id, -1)}>−</button>
+                          <button type="button" onClick={() => updateQty(item.id, -1)}>−</button>
                           <span>{item.cantidad}</span>
-                          <button type="button" onClick={() => updateQty(item.variante_id, 1)}>+</button>
+                          <button type="button" onClick={() => updateQty(item.id, 1)}>+</button>
                         </div>
                       </div>
                     ))}
@@ -608,6 +669,8 @@ export default function VentasPOS() {
       {showPago && pedidoActivo && (
         <PaymentModal
           total={pedidoTotal}
+          pedidoTitulo={pedidoCobroTitulo}
+          pedidoItems={pedidoActivo.items}
           medios={medios}
           metodo={metodo}
           onMetodoChange={setMetodo}
