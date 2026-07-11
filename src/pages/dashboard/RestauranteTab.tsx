@@ -133,16 +133,16 @@ function IconBtn({ children, onClick, danger }: any) {
 
 function ModalShell({ title, onClose, onSave, saveLabel = "Guardar", canSave = true, children }: any) {
   return (
-    <div style={{
+    <div className="st-modal-overlay" style={{
       position: "fixed",
       inset: 0,
       background: "rgba(0,0,0,0.28)",
       display: "flex",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "center",
       zIndex: 1000
     }}>
-      <div style={{
+      <div className="st-modal-panel" style={{
         background: "#fff",
         borderRadius: 14,
         padding: "28px 28px 24px",

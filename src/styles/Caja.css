@@ -115,7 +115,27 @@
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
 }
 
-.caja-btn-accion.abrir:hover  { background-color: #d97706; }
+.caja-btn-accion.abrir:disabled {
+  background-color: #d1d5db;
+  color: #6b7280;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.caja-btn-abrir:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.caja-btn-abrir.bloqueada {
+  background-color: #9ca3af;
+  box-shadow: none;
+}
+
+.caja-btn-abrir.bloqueada:hover {
+  background-color: #9ca3af;
+}
 
 .caja-btn-accion.cerrar {
   background-color: #ef4444;
@@ -816,15 +836,14 @@
 /* ── Apertura Modal ────────────────────────────────────────────── */
 .caja-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
   background-color: rgba(17, 24, 39, 0.4);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 9999;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .caja-modal {

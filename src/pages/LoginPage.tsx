@@ -7,6 +7,7 @@ import {
   apiLogin, 
   apiForgotPassword,
 } from "../auth/authService";
+import { ApiError } from "../lib/apiClient";
 import { fetchUsuariosParaLogin } from "../services/authUsuariosService";
 import { mapAuthUsuarioToLoginOption } from "../lib/mappers/usuarioMapper";
 import { waitForBackendReady } from "../lib/waitForBackend";
@@ -271,9 +272,40 @@ export default function LoginPage() {
         navigate(resumePath);
       }, 600);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       clearSession();
-      setBanner({ type: "err", msg: err.message || "❌ PIN incorrecto" });
+      const apiErr = err instanceof ApiError ? err : null;
+      const message = err instanceof Error ? err.message : "PIN incorrecto";
+      const isSessionElsewhere =
+        apiErr?.status === 409 &&
+        (message.includes("otro dispositivo") || message.includes("sesión activa"));
+
+      if (isSessionElsewhere) {
+        const forzar = window.confirm(
+          "Este usuario ya tiene una sesión activa en otro dispositivo.\n\n¿Cerrar esa sesión e iniciar aquí?"
+        );
+        if (forzar) {
+          try {
+            const data = await apiLogin(selectedUser, pin, { forzarCierre: true });
+            saveSession(data.token, data.expiresIn);
+            setBanner({ type: "ok", msg: `¡Bienvenido, ${data.user.nombre}!` });
+            const resumePath = getResumePath(data.user.rol);
+            setTimeout(() => navigate(resumePath), 600);
+            return;
+          } catch (forceErr: unknown) {
+            clearSession();
+            setBanner({
+              type: "err",
+              msg: forceErr instanceof Error ? forceErr.message : "No se pudo forzar el inicio de sesión",
+            });
+            setPin("");
+            pinRef.current?.focus();
+            return;
+          }
+        }
+      }
+
+      setBanner({ type: "err", msg: message || "PIN incorrecto" });
       setPin("");
       pinRef.current?.focus();
     } finally {

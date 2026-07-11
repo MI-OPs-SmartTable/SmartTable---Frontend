@@ -13,6 +13,7 @@ import { parseLocalDateTime } from "../../lib/dateTime";
 import {
   abrirCaja,
   cerrarCaja,
+  fetchCajaAbiertaActual,
   fetchCajas,
   fetchGastos,
   fetchGastosPorCaja,
@@ -48,6 +49,35 @@ export default function Caja() {
   const [loadingHistorial, setLoadingHistorial] = useState(true);
   const [closingCaja, setClosingCaja] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [bloqueoApertura, setBloqueoApertura] = useState<string | null>(null);
+
+  const loadBloqueoApertura = useCallback(async () => {
+    if (!usuario?.id || cajaAbierta) {
+      setBloqueoApertura(null);
+      return;
+    }
+
+    try {
+      const [cajaActual, usuarios] = await Promise.all([
+        fetchCajaAbiertaActual(),
+        fetchUsuarios().catch(() => []),
+      ]);
+
+      if (!cajaActual || cajaActual.usuario_id === usuario.id) {
+        setBloqueoApertura(null);
+        return;
+      }
+
+      const titular =
+        usuarios.find((user) => user.id === cajaActual.usuario_id)?.nombre ??
+        "otro usuario";
+      setBloqueoApertura(
+        `Hay una caja abierta por ${titular}. Debe iniciar sesión y cerrar la caja antes de abrir una nueva.`
+      );
+    } catch {
+      setBloqueoApertura(null);
+    }
+  }, [usuario?.id, cajaAbierta]);
 
   const loadHistorial = useCallback(async () => {
     setLoadingHistorial(true);
@@ -99,9 +129,29 @@ export default function Caja() {
     void loadHistorial();
   }, [loadHistorial]);
 
+  useEffect(() => {
+    void loadBloqueoApertura();
+  }, [loadBloqueoApertura]);
+
+  const tryOpenApertura = () => {
+    if (bloqueoApertura) {
+      setActionError(bloqueoApertura);
+      setShowAperturaModal(false);
+      return;
+    }
+    setActionError("");
+    setShowAperturaModal(true);
+  };
+
   const handleAbrirCaja = async (dineroBase: number) => {
     if (!usuario?.id) {
       throw new Error("No hay un usuario activo para abrir caja");
+    }
+
+    if (bloqueoApertura) {
+      setActionError(bloqueoApertura);
+      setShowAperturaModal(false);
+      throw new Error(bloqueoApertura);
     }
 
     try {
@@ -110,12 +160,15 @@ export default function Caja() {
       await refreshCaja();
       setShowAperturaModal(false);
       setActionError("");
+      setBloqueoApertura(null);
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
           : "No se pudo abrir la caja";
       setActionError(message);
+      setShowAperturaModal(false);
+      await loadBloqueoApertura();
       throw err;
     }
   };
@@ -171,6 +224,7 @@ export default function Caja() {
       setShowCierreModal(false);
       await refreshCaja();
       await loadHistorial();
+      await loadBloqueoApertura();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "No se pudo cerrar la caja");
     } finally {
@@ -182,6 +236,8 @@ export default function Caja() {
     return <p className="caja-loading">Verificando estado de caja...</p>;
   }
 
+  const aperturaBloqueada = Boolean(bloqueoApertura) && !cajaAbierta;
+
   return (
     <div>
       <div className="caja-header">
@@ -191,22 +247,31 @@ export default function Caja() {
         </div>
         <button
           type="button"
-          className={`caja-btn-abrir ${cajaAbierta ? "cerrar" : "abrir"}`}
-          onClick={cajaAbierta ? () => void openCierreModal() : () => setShowAperturaModal(true)}
-          disabled={closingCaja}
+          className={`caja-btn-abrir ${cajaAbierta ? "cerrar" : aperturaBloqueada ? "bloqueada" : "abrir"}`}
+          onClick={
+            cajaAbierta
+              ? () => void openCierreModal()
+              : tryOpenApertura
+          }
+          disabled={closingCaja || aperturaBloqueada}
+          title={aperturaBloqueada ? bloqueoApertura ?? undefined : undefined}
         >
           <LockIcon size={16} color="#fff" />
           {cajaAbierta ? "Cerrar caja" : "Abrir caja"}
         </button>
       </div>
 
-      {actionError && <p className="caja-error">{actionError}</p>}
+      {(actionError || bloqueoApertura) && (
+        <p className="caja-error">{actionError || bloqueoApertura}</p>
+      )}
 
       {!cajaAbierta || !caja ? (
         <CajaEstado
           cajaAbierta={false}
-          onAbrir={() => setShowAperturaModal(true)}
+          onAbrir={tryOpenApertura}
           onCerrar={() => void openCierreModal()}
+          bloqueada={aperturaBloqueada}
+          bloqueoMensaje={bloqueoApertura ?? undefined}
         />
       ) : (
         <CajaActiva caja={caja} usuarioId={usuario?.id ?? ""} />
@@ -218,7 +283,7 @@ export default function Caja() {
         <CajaHistorial historial={historial} />
       )}
 
-      {showAperturaModal && (
+      {showAperturaModal && !aperturaBloqueada && (
         <AperturaCajaModal
           onClose={() => setShowAperturaModal(false)}
           onAbrir={handleAbrirCaja}

@@ -61,8 +61,8 @@ function IconBtn({ children, onClick, danger }: { children: React.ReactNode; onC
 
 function ModalShell({ title, onClose, onSave, saveLabel = "Guardar", canSave = true, children }: any) {
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-      <div style={{ background: "#fff", borderRadius: 14, padding: "28px 28px 24px", width: 460, maxWidth: "calc(100vw - 32px)", boxShadow: "0 12px 40px rgba(0,0,0,0.14)" }}>
+    <div className="st-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.28)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 1000 }}>
+      <div className="st-modal-panel" style={{ background: "#fff", borderRadius: 14, padding: "28px 28px 24px", width: 460, maxWidth: "calc(100vw - 32px)", boxShadow: "0 12px 40px rgba(0,0,0,0.14)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#111" }}>{title}</h3>
           <button onClick={onClose} style={{ width: 30, height: 30, border: "none", background: "transparent", cursor: "pointer", color: "#9ca3af", fontSize: 20 }}>×</button>

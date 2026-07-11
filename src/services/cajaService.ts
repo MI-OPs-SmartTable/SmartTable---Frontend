@@ -21,6 +21,11 @@ export async function fetchCajaAbierta(usuarioId: string): Promise<CajaApi | nul
   );
 }
 
+export async function fetchCajaAbiertaActual(): Promise<CajaApi | null> {
+  const cajas = await fetchCajas();
+  return cajas.find((caja) => caja.estado === "abierta") ?? null;
+}
+
 export async function abrirCaja(usuarioId: string, montoApertura: number): Promise<CajaApi> {
   return apiClient.post<CajaApi>("/cajas/abrir", {
     usuario_id: usuarioId,

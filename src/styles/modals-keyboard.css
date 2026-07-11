@@ -1,0 +1,106 @@
+/**
+ * Modales seguros con teclado móvil.
+ * Usa visualViewport (--vv-height / --vv-offset-top) para que el overlay
+ * no quede detrás del teclado virtual.
+ */
+
+:root {
+  --vv-height: 100dvh;
+  --vv-offset-top: 0px;
+}
+
+.caja-modal-overlay,
+.db-modal-overlay,
+.pr-overlay,
+.pr-confirm-overlay,
+.cfg-overlay,
+.cfg-confirm-overlay,
+.pl-overlay,
+.st-modal-overlay {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: var(--vv-offset-top) !important;
+  width: 100% !important;
+  height: var(--vv-height) !important;
+  max-height: var(--vv-height) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: max(12px, env(safe-area-inset-top, 0px))
+    max(12px, env(safe-area-inset-right, 0px))
+    max(12px, env(safe-area-inset-bottom, 0px))
+    max(12px, env(safe-area-inset-left, 0px)) !important;
+  box-sizing: border-box;
+}
+
+.caja-modal,
+.db-close-modal,
+.pr-modal,
+.pr-confirm-box,
+.cfg-modal,
+.cfg-confirm-box,
+.pl-modal,
+.st-modal-panel {
+  margin-top: auto !important;
+  margin-bottom: auto !important;
+  max-height: calc(var(--vv-height) - 24px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  width: min(100%, 440px);
+}
+
+/* Caja / pago: cabecera y acciones fijas, cuerpo scrolleable */
+.caja-modal {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  max-width: 90%;
+}
+
+.caja-modal > .caja-modal-header,
+.caja-modal > .caja-modal-acts {
+  flex-shrink: 0;
+}
+
+.caja-modal > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.caja-modal > form > .caja-modal-body,
+.caja-modal > .caja-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.caja-modal > form > .caja-modal-acts {
+  flex-shrink: 0;
+}
+
+/* Evitar zoom agresivo en iOS al enfocar inputs de modal */
+@media (max-width: 900px) {
+  .caja-modal-field input,
+  .caja-modal-field select,
+  .caja-modal-field textarea,
+  .pr-modal input,
+  .pr-modal select,
+  .pr-modal textarea,
+  .cfg-modal input,
+  .cfg-modal select,
+  .cfg-modal textarea,
+  .pl-modal input,
+  .st-modal-panel input {
+    font-size: 16px !important;
+  }
+}
