@@ -2,18 +2,23 @@ const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const os = require('os');
 const { spawn } = require('child_process');
+const { CloudflareTunnelManager } = require('./cloudflareTunnel.cjs');
 
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const PORT = Number(process.env.PORT || 8080);
 const FRONTEND_PORT = Number(process.env.VITE_PORT || 5173);
 const isDev = !app.isPackaged && process.env.SMARTTABLE_DEV === '1';
+const tunnelEnabled = process.env.SMARTTABLE_CLOUDFLARE_TUNNEL !== '0';
 
 let mainWindow = null;
 let backendProcess = null;
 let frontendProcess = null;
 let allowQuit = false;
+/** @type {import('./cloudflareTunnel.cjs').CloudflareTunnelManager | null} */
+let tunnelManager = null;
 
 function resolveBackendRoot() {
   if (process.env.SMARTTABLE_BACKEND_PATH) {
@@ -43,6 +48,14 @@ function getBackendRoot() {
 function getFrontendDist() {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, 'frontend');
+  }
+
+  // desktop:start (SMARTTABLE_DEV=0): servir el build local sin empaquetar.
+  if (!isDev) {
+    const localDist = path.join(__dirname, '..', 'dist');
+    if (fs.existsSync(path.join(localDist, 'index.html'))) {
+      return localDist;
+    }
   }
 
   return null;
@@ -95,6 +108,10 @@ function buildBackendEnv() {
 
   if (frontendDist && fs.existsSync(frontendDist)) {
     env.FRONTEND_DIST = frontendDist;
+  } else if (!isDev) {
+    console.warn(
+      '[electron] No se encontró dist/ del frontend. Ejecuta "npm run build" antes de desktop:start, o usa desktop:dev.'
+    );
   }
 
   const envFile = path.join(backendRoot, '.env');
@@ -265,9 +282,75 @@ function createMainWindow() {
   });
 }
 
+function emitTunnelStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('tunnel:status', status);
+  }
+}
+
+function getTunnelLocalTarget() {
+  // Dev: Vite (proxy /api). Prod/start: backend sirve dist + API en el mismo puerto.
+  if (isDev) {
+    return `http://127.0.0.1:${FRONTEND_PORT}`;
+  }
+  return `http://127.0.0.1:${PORT}`;
+}
+
+function getLanIPv4() {
+  const nets = os.networkInterfaces();
+  const candidates = [];
+
+  for (const entries of Object.values(nets)) {
+    for (const net of entries || []) {
+      const family = net.family === 4 || net.family === 'IPv4';
+      if (!family || net.internal) continue;
+      candidates.push(net.address);
+    }
+  }
+
+  const preferred = candidates.find(
+    (ip) =>
+      ip.startsWith('192.168.') ||
+      ip.startsWith('10.') ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip)
+  );
+
+  return preferred || candidates[0] || null;
+}
+
+/** URL para celular en la misma WiFi (no usar 127.0.0.1). */
+function getLocalAccessInfo() {
+  const ip = getLanIPv4();
+  const port = isDev ? FRONTEND_PORT : PORT;
+  if (!ip) {
+    return {
+      url: null,
+      ip: null,
+      port,
+      error: 'No se detectó una IP de red local. Conecta este PC a la WiFi del restaurante.',
+    };
+  }
+  return {
+    url: `http://${ip}:${port}`,
+    ip,
+    port,
+    error: null,
+  };
+}
+
+function initTunnelManager() {
+  tunnelManager = new CloudflareTunnelManager({
+    userDataPath: app.getPath('userData'),
+    getLocalTarget: getTunnelLocalTarget,
+    enabled: tunnelEnabled,
+    onStatus: emitTunnelStatus,
+  });
+}
+
 function requestQuitFromRenderer() {
   allowQuit = true;
   app.isQuitting = true;
+  tunnelManager?.stop();
   stopFrontendProcess();
   stopBackendProcess();
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -291,6 +374,8 @@ app.whenReady().then(async () => {
   fs.mkdirSync(backupDir, { recursive: true });
   fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
 
+  initTunnelManager();
+
   ipcMain.on('app:confirm-quit', () => {
     requestQuitFromRenderer();
   });
@@ -298,6 +383,13 @@ app.whenReady().then(async () => {
   ipcMain.on('app:cancel-quit', () => {
     // El renderer canceló el cierre; la ventana permanece abierta.
   });
+
+  ipcMain.handle('tunnel:get-status', () => tunnelManager?.getStatus() ?? null);
+  ipcMain.handle('tunnel:restart', async () => {
+    if (!tunnelManager) return null;
+    return tunnelManager.restart();
+  });
+  ipcMain.handle('access:get-local', () => getLocalAccessInfo());
 
   try {
     startBackendProcess();
@@ -309,6 +401,11 @@ app.whenReady().then(async () => {
     }
 
     createMainWindow();
+
+    // Acceso remoto vía Cloudflare (no bloquea el UI si falla).
+    void tunnelManager?.start().then((status) => {
+      console.log('[electron] Cloudflare tunnel:', status?.status, status?.url || status?.error || '');
+    });
   } catch (error) {
     console.error('No se pudo iniciar SmarTable:', error);
     allowQuit = true;
@@ -321,6 +418,7 @@ app.on('window-all-closed', () => {
     return;
   }
   app.isQuitting = true;
+  tunnelManager?.stop();
   stopFrontendProcess();
   stopBackendProcess();
   if (process.platform !== 'darwin') {
@@ -331,6 +429,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', (event) => {
   if (allowQuit) {
     app.isQuitting = true;
+    tunnelManager?.stop();
     stopFrontendProcess();
     stopBackendProcess();
     return;

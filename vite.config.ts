@@ -17,6 +17,9 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiProxyTarget,
           changeOrigin: true,
+          // SSE (/api/events): evitar timeouts de proxy en conexiones largas
+          timeout: 0,
+          proxyTimeout: 0,
         },
       },
     },

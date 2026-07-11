@@ -5,6 +5,7 @@ const PATH_ROLES: Record<string, string[]> = {
   "/dashboard/ventas": ["admin", "cajero", "mesero"],
   "/dashboard/productos": ["admin"],
   "/dashboard/caja": ["admin", "cajero"],
+  "/dashboard/reportes": ["admin"],
   "/dashboard/configuracion": ["admin"],
 };
 

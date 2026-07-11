@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fmt } from "../../lib/formatMoney";
 import { usePosSession } from "../../context/PosSessionContext";
 import { getCategoriaUi } from "../../lib/categoriaUi";
@@ -21,6 +21,7 @@ import { ubicacionesService } from "../../services/ubicacionesService";
 import { mesasService } from "../../services/mesasService";
 import { fetchMediosPago, type MedioPagoApi } from "../../services/mediosPagoService";
 import PaymentModal, { type MetodoPago } from "../../components/PaymentModal";
+import { usePosRealtime } from "../../hooks/usePosRealtime";
 import "../../styles/Dashboard.css";
 import "../../styles/Ventas.css";
 
@@ -68,6 +69,7 @@ export default function VentasPOS() {
   const [montoTransferencia, setMontoTransferencia] = useState("");
   const [processing, setProcessing] = useState(false);
   const [pagoError, setPagoError] = useState("");
+  const pendientesFetchedRef = useRef(false);
 
   const mesasFiltradas = useMemo(
     () => mesas.filter((m) => m.ubicacion_id === ubicacionId),
@@ -114,14 +116,32 @@ export default function VentasPOS() {
     return totalPedido(pedidoActivo);
   }, [pedidoActivo]);
 
-  const loadPendientes = useCallback(async () => {
+  const loadPendientes = useCallback(async (options?: { silent?: boolean }) => {
     if (!cajaId) {
+      pendientesFetchedRef.current = false;
       setPedidosPendientes([]);
       return;
     }
-    const data = await fetchPedidosPendientes(cajaId);
-    setPedidosPendientes(data);
+    try {
+      const data = await fetchPedidosPendientes(cajaId);
+      setPedidosPendientes(data);
+      pendientesFetchedRef.current = true;
+    } catch {
+      if (!options?.silent) {
+        setPedidosPendientes([]);
+        pendientesFetchedRef.current = true;
+      }
+    }
   }, [cajaId]);
+
+  const loadMesas = useCallback(async () => {
+    try {
+      const mes = (await mesasService.getAll()) as MesaApi[];
+      setMesas(mes);
+    } catch {
+      /* silencio en poll */
+    }
+  }, []);
 
   const loadBase = useCallback(async () => {
     setLoading(true);
@@ -153,17 +173,62 @@ export default function VentasPOS() {
   }, [loadBase]);
 
   useEffect(() => {
-    loadPendientes().catch(() => setPedidosPendientes([]));
-  }, [loadPendientes, tabSidebar, successMsg]);
+    void loadPendientes();
+  }, [loadPendientes, tabSidebar]);
+
+  const refreshPosVista = useCallback(() => {
+    void loadPendientes({ silent: true });
+    void loadMesas();
+  }, [loadPendientes, loadMesas]);
+
+  usePosRealtime({
+    enabled: Boolean(cajaId && cajaAbierta),
+    cajaId,
+    onPedidosChanged: refreshPosVista,
+  });
 
   useEffect(() => {
     setMesaId("");
   }, [ubicacionId]);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3500);
-  };
+  }, []);
+
+  const resetNuevoPedido = useCallback(() => {
+    setPedidoEnEdicion(null);
+    setEditCart([]);
+    setCart([]);
+    setUbicacionId("");
+    setMesaId("");
+    setError("");
+  }, []);
+
+  // Si otro dispositivo ocupa la mesa seleccionada, liberar selección del pedido nuevo.
+  useEffect(() => {
+    if (!mesaId || pedidoEnEdicion) return;
+    if (!mesaTienePedidoPendiente(mesaId)) return;
+    setMesaId("");
+    setCart([]);
+    setError(MESA_POR_COBRAR_MSG);
+  }, [mesaId, pedidoEnEdicion, mesaTienePedidoPendiente]);
+
+  // Si el pedido en edición ya no está pendiente (cobrado o cancelado en otro lado).
+  useEffect(() => {
+    if (!pedidoEnEdicion || !pendientesFetchedRef.current) return;
+    if (pedidosPendientes.some((p) => p.id === pedidoEnEdicion.id)) return;
+    resetNuevoPedido();
+    showToast("El pedido ya no está pendiente");
+  }, [pedidosPendientes, pedidoEnEdicion, resetNuevoPedido, showToast]);
+
+  useEffect(() => {
+    if (!showPago || !pedidoActivo || !pendientesFetchedRef.current) return;
+    if (pedidosPendientes.some((p) => p.id === pedidoActivo.id)) return;
+    setShowPago(false);
+    setPedidoActivo(null);
+    showToast("Este pedido ya fue cobrado o cancelado");
+  }, [pedidosPendientes, showPago, pedidoActivo, showToast]);
 
   const handleMesaChange = (nextMesaId: string) => {
     if (mesaTienePedidoPendiente(nextMesaId)) {
@@ -173,15 +238,6 @@ export default function VentasPOS() {
     }
     setError("");
     setMesaId(nextMesaId);
-  };
-
-  const resetNuevoPedido = () => {
-    setPedidoEnEdicion(null);
-    setEditCart([]);
-    setCart([]);
-    setUbicacionId("");
-    setMesaId("");
-    setError("");
   };
 
   const addToCart = (item: CatalogoItem) => {

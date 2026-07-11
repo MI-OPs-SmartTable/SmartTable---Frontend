@@ -319,7 +319,11 @@ export default function CajaActiva({ caja, usuarioId }: CajaActivaProps) {
           </div>
         </div>
 
-        <ColaboradoresCaja cajaId={caja.id} titularId={caja.usuario_id} />
+        <ColaboradoresCaja
+          cajaId={caja.id}
+          titularId={caja.usuario_id}
+          puedeGestionar={usuarioId === caja.usuario_id}
+        />
       </div>
     </div>
   );

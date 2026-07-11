@@ -10,6 +10,7 @@ type UsuarioLite = {
 
 type CajaLite = {
   id?: string;
+  usuario_id?: string;
   monto_apertura?: number;
 };
 
@@ -42,7 +43,9 @@ export function useSessionCloseFlow({
   const [extraError, setExtraError] = useState("");
   const [extraGastos, setExtraGastos] = useState<Array<{ descripcion: string; monto: number }>>([]);
 
-  const canManageCaja = usuario?.rol === "admin" || usuario?.rol === "cajero";
+  const esTitularCaja = Boolean(
+    usuario?.id && caja?.usuario_id && usuario.id === caja.usuario_id
+  );
 
   const resumenCierre = useMemo(() => {
     const baseInicial = Number(caja?.monto_apertura ?? 0);
@@ -117,7 +120,8 @@ export function useSessionCloseFlow({
   };
 
   const handleLogout = async () => {
-    if (canManageCaja && cajaAbierta && cajaId) {
+    // Solo el titular debe cerrar la caja al salir; colaboradores (p. ej. admin) solo cierran su sesión.
+    if (esTitularCaja && cajaAbierta && cajaId) {
       await openCloseModal("logout");
       return;
     }
@@ -127,11 +131,11 @@ export function useSessionCloseFlow({
 
   /** Intercepta cierre de la app de escritorio. */
   const handleAppCloseRequest = async () => {
-    if (canManageCaja && cajaAbierta && cajaId) {
+    if (esTitularCaja && cajaAbierta && cajaId) {
       await openCloseModal("quit");
       return;
     }
-    // Sin caja abierta: salir dejando la sesión para reanudar al volver
+    // Sin caja propia abierta: salir dejando la sesión para reanudar al volver
     window.smarttable?.confirmQuit();
   };
 

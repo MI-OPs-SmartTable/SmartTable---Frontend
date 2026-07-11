@@ -237,6 +237,8 @@ export default function Caja() {
   }
 
   const aperturaBloqueada = Boolean(bloqueoApertura) && !cajaAbierta;
+  const esTitular = Boolean(caja && usuario?.id && caja.usuario_id === usuario.id);
+  const puedeCerrar = cajaAbierta && esTitular;
 
   return (
     <div>
@@ -245,20 +247,34 @@ export default function Caja() {
           <h1>Caja</h1>
           <p>Control de apertura, ventas y cierre de caja</p>
         </div>
-        <button
-          type="button"
-          className={`caja-btn-abrir ${cajaAbierta ? "cerrar" : aperturaBloqueada ? "bloqueada" : "abrir"}`}
-          onClick={
-            cajaAbierta
-              ? () => void openCierreModal()
-              : tryOpenApertura
-          }
-          disabled={closingCaja || aperturaBloqueada}
-          title={aperturaBloqueada ? bloqueoApertura ?? undefined : undefined}
-        >
-          <LockIcon size={16} color="#fff" />
-          {cajaAbierta ? "Cerrar caja" : "Abrir caja"}
-        </button>
+        {cajaAbierta ? (
+          puedeCerrar ? (
+            <button
+              type="button"
+              className="caja-btn-abrir cerrar"
+              onClick={() => void openCierreModal()}
+              disabled={closingCaja}
+            >
+              <LockIcon size={16} color="#fff" />
+              Cerrar caja
+            </button>
+          ) : (
+            <span className="caja-colaborador-badge" title="Solo quien abrió la caja puede cerrarla">
+              Colaborador · sin permiso de cierre
+            </span>
+          )
+        ) : (
+          <button
+            type="button"
+            className={`caja-btn-abrir ${aperturaBloqueada ? "bloqueada" : "abrir"}`}
+            onClick={tryOpenApertura}
+            disabled={closingCaja || aperturaBloqueada}
+            title={aperturaBloqueada ? bloqueoApertura ?? undefined : undefined}
+          >
+            <LockIcon size={16} color="#fff" />
+            Abrir caja
+          </button>
+        )}
       </div>
 
       {(actionError || bloqueoApertura) && (

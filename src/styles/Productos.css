@@ -71,17 +71,23 @@
 
 .pr-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 24px;
   background: var(--cream);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 4px;
-  width: fit-content;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .pr-tab {
-  padding: 8px 18px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 14px;
   border-radius: 8px;
   font-size: 13.5px;
   font-weight: 500;
@@ -90,6 +96,10 @@
   background: transparent;
   color: var(--ash);
   transition: background 0.15s;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pr-tab.active {
@@ -576,11 +586,33 @@
 
 /* Responsive */
 @media (max-width: 720px) {
-  .pr-root { padding: 20px 14px; }
+  .pr-root { padding: 20px 14px; max-width: 100%; overflow-x: hidden; }
   .pr-field-row { grid-template-columns: 1fr; }
   .pr-table thead { display: none; }
   .pr-table tr { display: block; padding: 12px 0; }
-  .pr-table td { display: flex; justify-content: space-between; padding: 6px 14px; }
+  .pr-table td { display: flex; justify-content: space-between; padding: 6px 14px; gap: 12px; min-width: 0; }
+  .pr-table td > * { min-width: 0; overflow-wrap: anywhere; }
+  .pr-header,
+  .pr-toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .pr-btn-new {
+    width: 100%;
+    justify-content: center;
+  }
+  .pr-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .pr-tab {
+    width: 100%;
+    padding: 10px 8px;
+    font-size: 12.5px;
+    white-space: normal;
+    line-height: 1.25;
+  }
 }
 
 /* ========== PROVEEDORES - MODALES MEJORADOS ========== */

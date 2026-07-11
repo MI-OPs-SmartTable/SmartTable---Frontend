@@ -98,6 +98,44 @@ export const apiClient = {
   patch: <T>(path: string, body?: unknown, auth = true) =>
     request<T>("PATCH", path, { auth, body }),
   delete: <T>(path: string, auth = true) => request<T>("DELETE", path, { auth }),
+  /** Descarga un archivo binario (p. ej. Excel de reportes). */
+  getBlob: async (
+    path: string,
+    auth = true
+  ): Promise<{ blob: Blob; filename: string | null }> => {
+    const headers: Record<string, string> = {};
+    if (auth) {
+      const token = getToken();
+      if (!token) {
+        throw new ApiError("Sesión no iniciada", 401);
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const url = `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+    const response = await fetch(url, { method: "GET", headers });
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearSession();
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
+      }
+      let message = `Error HTTP ${response.status}`;
+      try {
+        const data = await response.json();
+        if (data && typeof data.error === "string") message = data.error;
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(message, response.status);
+    }
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    return {
+      blob: await response.blob(),
+      filename: match?.[1] ?? null,
+    };
+  },
   /** Sube un cuerpo binario (p. ej. respaldo .db.gz) sin JSON. */
   postBinary: async <T>(
     path: string,

@@ -22,4 +22,26 @@ contextBridge.exposeInMainWorld('smarttable', {
   cancelQuit() {
     ipcRenderer.send('app:cancel-quit');
   },
+  getTunnelStatus() {
+    return ipcRenderer.invoke('tunnel:get-status');
+  },
+  restartTunnel() {
+    return ipcRenderer.invoke('tunnel:restart');
+  },
+  onTunnelStatus(handler) {
+    const listener = (_event, status) => {
+      try {
+        handler(status);
+      } catch (err) {
+        console.error('[smarttable] Error en onTunnelStatus:', err);
+      }
+    };
+    ipcRenderer.on('tunnel:status', listener);
+    return () => {
+      ipcRenderer.removeListener('tunnel:status', listener);
+    };
+  },
+  getLocalAccess() {
+    return ipcRenderer.invoke('access:get-local');
+  },
 });

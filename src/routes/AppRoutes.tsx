@@ -9,6 +9,7 @@ import VentasPOS from "../pages/dashboard/VentasPOS";
 import Productos from "../pages/dashboard/Productos";
 import Caja from "../pages/dashboard/Caja";
 import Configuracion from "../pages/dashboard/ConfiguracionUsuarios";
+import Reportes from "../pages/dashboard/Reportes";
 import { getResumePath } from "../lib/sessionResume";
 
 interface ProtectedRouteProps {
@@ -125,6 +126,12 @@ const AppRoutes = () => {
           <Route path="caja" element={
             <ProtectedRoute allowedRoles={["admin", "cajero"]}>
               <Caja />
+            </ProtectedRoute>
+          } />
+
+          <Route path="reportes" element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <Reportes />
             </ProtectedRoute>
           } />
 

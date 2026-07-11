@@ -3,7 +3,14 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 16px;
   margin-bottom: 28px;
+  min-width: 0;
+}
+
+.caja-header > div:first-child {
+  min-width: 0;
+  flex: 1;
 }
 
 .caja-header h1 {
@@ -137,6 +144,18 @@
   background-color: #9ca3af;
 }
 
+.caja-colaborador-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b5563;
+  background: #f3f4f6;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
 .caja-btn-accion.cerrar {
   background-color: #ef4444;
   color: #fff;
@@ -180,7 +199,7 @@
 
 .caja-activa-metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -193,6 +212,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .caja-metric-card.ven {
@@ -830,6 +850,44 @@
 
   .caja-historial-header {
     flex-wrap: wrap;
+  }
+
+  .caja-header {
+    flex-wrap: wrap;
+  }
+
+  .caja-btn-abrir,
+  .caja-colaborador-badge {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .caja-activa-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .caja-activa-sections {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .caja-modal,
+  .caja-cierre-modal {
+    width: min(440px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 520px) {
+  .caja-activa-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .caja-activa-methods {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .caja-header h1 {
+    font-size: 22px;
   }
 }
 

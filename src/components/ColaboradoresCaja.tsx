@@ -13,6 +13,8 @@ import "../styles/Caja.css";
 interface ColaboradoresCajaProps {
   cajaId: string;
   titularId: string;
+  /** Solo quien abrió la caja puede agregar/quitar colaboradores. */
+  puedeGestionar: boolean;
 }
 
 function formatInicioAt(value: string): string {
@@ -26,7 +28,7 @@ function formatInicioAt(value: string): string {
   });
 }
 
-export default function ColaboradoresCaja({ cajaId, titularId }: ColaboradoresCajaProps) {
+export default function ColaboradoresCaja({ cajaId, titularId, puedeGestionar }: ColaboradoresCajaProps) {
   const [colaboradores, setColaboradores] = useState<ColaboradorApi[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,7 +112,7 @@ export default function ColaboradoresCaja({ cajaId, titularId }: ColaboradoresCa
     <div className="caja-section-card caja-colaboradores-card">
       <div className="caja-section-header">
         <h3>Colaboradores ({colaboradores.length})</h3>
-        {!showForm && (
+        {puedeGestionar && !showForm && (
           <button type="button" className="caja-add-btn" onClick={() => setShowForm(true)}>
             + Agregar
           </button>
@@ -119,7 +121,7 @@ export default function ColaboradoresCaja({ cajaId, titularId }: ColaboradoresCa
 
       {error && <p className="caja-error">{error}</p>}
 
-      {showForm && (
+      {puedeGestionar && showForm && (
         <form className="caja-gasto-form" onSubmit={handleAgregar}>
           <div className="caja-gasto-form-fields">
             <select
@@ -166,14 +168,16 @@ export default function ColaboradoresCaja({ cajaId, titularId }: ColaboradoresCa
                   {getRolLabel(colaborador.rol)} · Desde {formatInicioAt(colaborador.inicio_at)}
                 </p>
               </div>
-              <button
-                type="button"
-                className="caja-colaborador-quitar"
-                onClick={() => void handleQuitar(colaborador.sesion_id)}
-                disabled={removingId === colaborador.sesion_id}
-              >
-                {removingId === colaborador.sesion_id ? "Quitando..." : "Quitar"}
-              </button>
+              {puedeGestionar && (
+                <button
+                  type="button"
+                  className="caja-colaborador-quitar"
+                  onClick={() => void handleQuitar(colaborador.sesion_id)}
+                  disabled={removingId === colaborador.sesion_id}
+                >
+                  {removingId === colaborador.sesion_id ? "Quitando..." : "Quitar"}
+                </button>
+              )}
             </div>
           ))
         )}

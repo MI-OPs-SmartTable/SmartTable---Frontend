@@ -12,6 +12,7 @@ import { fetchUsuariosParaLogin } from "../services/authUsuariosService";
 import { mapAuthUsuarioToLoginOption } from "../lib/mappers/usuarioMapper";
 import { waitForBackendReady } from "../lib/waitForBackend";
 import { getResumePath } from "../lib/sessionResume";
+import RemoteAccessCard from "../components/RemoteAccessCard";
 import "../styles/LoginPage.css";
 
 // ============================================
@@ -342,6 +343,9 @@ export default function LoginPage() {
           <div className="pl-form-wrap" style={{ textAlign: "center" }}>
             <Spinner />
             <p style={{ marginTop: 20, color: "var(--ash)" }}>{loadingStatus}</p>
+            <div style={{ marginTop: 24, textAlign: "left" }}>
+              <RemoteAccessCard />
+            </div>
           </div>
         </div>
       </div>
@@ -379,6 +383,9 @@ export default function LoginPage() {
             >
               Reintentar
             </button>
+            <div style={{ marginTop: 24, textAlign: "left" }}>
+              <RemoteAccessCard />
+            </div>
           </div>
         </div>
       </div>
@@ -542,6 +549,8 @@ export default function LoginPage() {
                 </span>
               </button>
             </form>
+
+            <RemoteAccessCard />
 
             <button className="pl-forgot" type="button" onClick={() => setShowForgot(true)}>
               ¿Olvidaste tu contraseña?
