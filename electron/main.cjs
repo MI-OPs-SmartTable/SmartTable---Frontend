@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -17,8 +17,39 @@ let mainWindow = null;
 let backendProcess = null;
 let frontendProcess = null;
 let allowQuit = false;
+let backendEarlyExit = null;
+let logStream = null;
 /** @type {import('./cloudflareTunnel.cjs').CloudflareTunnelManager | null} */
 let tunnelManager = null;
+
+function getLogPath() {
+  return path.join(app.getPath('userData'), 'logs', 'smarttable.log');
+}
+
+function appendLog(line) {
+  const text = `[${new Date().toISOString()}] ${line}\n`;
+  try {
+    if (!logStream) {
+      const logPath = getLogPath();
+      fs.mkdirSync(path.dirname(logPath), { recursive: true });
+      logStream = fs.createWriteStream(logPath, { flags: 'a' });
+    }
+    logStream.write(text);
+  } catch {
+    /* ignore log failures */
+  }
+  console.error(line);
+}
+
+function showStartupError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const logPath = getLogPath();
+  appendLog(`STARTUP FAILED: ${message}`);
+  dialog.showErrorBox(
+    'SmarTable no pudo iniciar',
+    `${message}\n\nRevisa el log:\n${logPath}\n\nSi el error menciona better-sqlite3 o .node, instala "Microsoft Visual C++ Redistributable (x64)" e intenta de nuevo.`
+  );
+}
 
 function resolveBackendRoot() {
   if (process.env.SMARTTABLE_BACKEND_PATH) {
@@ -134,37 +165,61 @@ function startBackendProcess() {
   const backendRoot = getBackendRoot();
   const scriptPath = path.join(backendRoot, 'api/index.js');
   const env = buildBackendEnv();
+  backendEarlyExit = null;
+
+  if (!fs.existsSync(scriptPath)) {
+    throw new Error(`No se encontró el backend empaquetado en:\n${scriptPath}`);
+  }
 
   if (!isDev) {
     env.ELECTRON_RUN_AS_NODE = '1';
   }
 
+  appendLog(`Iniciando backend: ${scriptPath}`);
+  appendLog(`DB_PATH=${env.DB_PATH}`);
+  appendLog(`FRONTEND_DIST=${env.FRONTEND_DIST || '(vacío)'}`);
+
   backendProcess = spawn(getNodeExecutable(), [scriptPath], {
     cwd: backendRoot,
     env,
-    stdio: 'inherit',
+    stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
 
-  backendProcess.on('exit', (code) => {
+  const onBackendData = (chunk) => {
+    const text = String(chunk).trim();
+    if (text) appendLog(`[backend] ${text}`);
+  };
+  backendProcess.stdout?.on('data', onBackendData);
+  backendProcess.stderr?.on('data', onBackendData);
+
+  backendProcess.on('error', (err) => {
+    backendEarlyExit = err;
+    appendLog(`Backend spawn error: ${err.message}`);
+  });
+
+  backendProcess.on('exit', (code, signal) => {
     const proc = backendProcess;
     backendProcess = null;
 
     // 42 = restauración de BD: reiniciar backend automáticamente
     if (code === 42 && !app.isQuitting) {
-      console.log('[electron] Backend pidió reinicio tras restaurar BD...');
+      appendLog('[electron] Backend pidió reinicio tras restaurar BD...');
       setTimeout(() => {
         try {
           startBackendProcess();
         } catch (err) {
-          console.error('[electron] No se pudo reiniciar el backend:', err);
+          appendLog(`[electron] No se pudo reiniciar el backend: ${err.message}`);
         }
       }, 400);
       return;
     }
 
     if (code && code !== 0) {
-      console.error(`Backend finalizó con código ${code}`);
+      backendEarlyExit = new Error(
+        `El backend se cerró con código ${code}${signal ? ` (signal ${signal})` : ''}. Revisa el log.`
+      );
+      appendLog(backendEarlyExit.message);
     }
 
     void proc;
@@ -190,6 +245,10 @@ async function waitForServer(url, label, timeoutMs = 45000) {
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
+    if (backendEarlyExit) {
+      throw backendEarlyExit;
+    }
+
     if (await checkUrl(url)) {
       return;
     }
@@ -197,7 +256,9 @@ async function waitForServer(url, label, timeoutMs = 45000) {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
-  throw new Error(`${label} no respondió a tiempo (${url})`);
+  throw new Error(
+    `${label} no respondió a tiempo (${url}).\n¿El puerto ${PORT} está ocupado por otro programa?`
+  );
 }
 
 function waitForBackend() {
@@ -392,6 +453,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('access:get-local', () => getLocalAccessInfo());
 
   try {
+    appendLog('=== SmarTable start ===');
+    appendLog(`packaged=${app.isPackaged} execPath=${process.execPath}`);
+    appendLog(`resourcesPath=${process.resourcesPath || '(n/a)'}`);
+
     startBackendProcess();
     await waitForBackend();
 
@@ -404,10 +469,10 @@ app.whenReady().then(async () => {
 
     // Acceso remoto vía Cloudflare (no bloquea el UI si falla).
     void tunnelManager?.start().then((status) => {
-      console.log('[electron] Cloudflare tunnel:', status?.status, status?.url || status?.error || '');
+      appendLog(`[electron] Cloudflare tunnel: ${status?.status} ${status?.url || status?.error || ''}`);
     });
   } catch (error) {
-    console.error('No se pudo iniciar SmarTable:', error);
+    showStartupError(error);
     allowQuit = true;
     app.quit();
   }

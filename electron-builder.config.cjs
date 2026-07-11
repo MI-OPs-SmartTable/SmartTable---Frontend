@@ -29,7 +29,14 @@ module.exports = {
     {
       from: backendPath,
       to: 'backend',
-      filter: ['**/*', '!tests/**', '!**/*.test.js'],
+      filter: [
+        '**/*',
+        '!tests/**',
+        '!**/*.test.js',
+        // No empaquetar .env de desarrollo del PC que hace el build.
+        '!.env',
+        '!.env.*',
+      ],
     },
     {
       from: 'dist',
@@ -39,7 +46,11 @@ module.exports = {
   asarUnpack: ['**/node_modules/better-sqlite3/**'],
   win: {
     target: ['nsis'],
+    // Evita descargar/extraer winCodeSign (falla en Windows sin privilegio de symlinks
+    // por archivos .dylib de macOS que no necesitamos en un build sin firma de código).
+    signAndEditExecutable: false,
   },
+  forceCodeSigning: false,
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
