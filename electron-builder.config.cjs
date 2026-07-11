@@ -5,7 +5,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const backendPath = process.env.SMARTTABLE_BACKEND_PATH
   ? path.resolve(process.env.SMARTTABLE_BACKEND_PATH)
-  : path.resolve(__dirname, '../SmartTable---Backend-nog');
+  : path.resolve(__dirname, '../SmartTable---Backend');
 
 if (!fs.existsSync(backendPath)) {
   throw new Error(

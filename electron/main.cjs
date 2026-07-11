@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -13,13 +13,15 @@ const isDev = !app.isPackaged && process.env.SMARTTABLE_DEV === '1';
 let mainWindow = null;
 let backendProcess = null;
 let frontendProcess = null;
+let allowQuit = false;
 
 function resolveBackendRoot() {
   if (process.env.SMARTTABLE_BACKEND_PATH) {
     return path.resolve(process.env.SMARTTABLE_BACKEND_PATH);
   }
 
-  return path.resolve(__dirname, '../../SmartTable---Backend-nog');
+  // Legacy fallback kept for old local setups.
+  return path.resolve(__dirname, '../../SmartTable---Backend');
 }
 
 function getBackendRoot() {
@@ -29,8 +31,9 @@ function getBackendRoot() {
 
   const backendRoot = resolveBackendRoot();
   if (!fs.existsSync(backendRoot)) {
+    const recommendedPath = path.resolve(__dirname, '../../SmartTable---Backend');
     throw new Error(
-      `No se encontró el backend en: ${backendRoot}. Configura SMARTTABLE_BACKEND_PATH en .env`
+      `No se encontró el backend en: ${backendRoot}. Configura SMARTTABLE_BACKEND_PATH en .env (ejemplo recomendado: ${recommendedPath})`
     );
   }
 
@@ -57,13 +60,31 @@ function getDatabasePath() {
   return path.join(app.getPath('userData'), 'pos.db');
 }
 
+function getUserDataPaths() {
+  const userData = app.getPath('userData');
+
+  return {
+    userData,
+    configPath: path.join(userData, 'backup-config.json'),
+    backupDir: path.join(userData, 'backups'),
+    credentialsPath: path.join(userData, 'credentials', 'google-service-account.json'),
+  };
+}
+
 function buildBackendEnv() {
   const backendRoot = getBackendRoot();
   const frontendDist = getFrontendDist();
+  const { configPath, backupDir, credentialsPath } = getUserDataPaths();
   const env = {
     ...process.env,
     PORT: String(PORT),
     DB_PATH: getDatabasePath(),
+    CONFIG_PATH: configPath,
+    BACKUP_LOCAL_DIR: backupDir,
+    GOOGLE_DRIVE_CREDENTIALS_PATH: credentialsPath,
+    GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID || '',
+    GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET || '',
+    GOOGLE_OAUTH_CLIENT_PATH: process.env.GOOGLE_OAUTH_CLIENT_PATH || '',
     environment: 'PRODUCTION',
     SMARTTABLE_AUTO_SEED: '1',
     JWT_SECRET_PRODUCTION: process.env.JWT_SECRET_PRODUCTION || 'smarttable-desktop-secret-change-me',
@@ -109,10 +130,27 @@ function startBackendProcess() {
   });
 
   backendProcess.on('exit', (code) => {
+    const proc = backendProcess;
     backendProcess = null;
+
+    // 42 = restauración de BD: reiniciar backend automáticamente
+    if (code === 42 && !app.isQuitting) {
+      console.log('[electron] Backend pidió reinicio tras restaurar BD...');
+      setTimeout(() => {
+        try {
+          startBackendProcess();
+        } catch (err) {
+          console.error('[electron] No se pudo reiniciar el backend:', err);
+        }
+      }, 400);
+      return;
+    }
+
     if (code && code !== 0) {
       console.error(`Backend finalizó con código ${code}`);
     }
+
+    void proc;
   });
 }
 
@@ -212,9 +250,30 @@ function createMainWindow() {
     return { action: 'deny' };
   });
 
+  mainWindow.on('close', (event) => {
+    if (allowQuit) {
+      return;
+    }
+    event.preventDefault();
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app:request-close');
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+function requestQuitFromRenderer() {
+  allowQuit = true;
+  app.isQuitting = true;
+  stopFrontendProcess();
+  stopBackendProcess();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();
+  }
+  app.quit();
 }
 
 function stopBackendProcess() {
@@ -227,7 +286,18 @@ function stopBackendProcess() {
 }
 
 app.whenReady().then(async () => {
+  const { backupDir, credentialsPath } = getUserDataPaths();
   fs.mkdirSync(path.dirname(getDatabasePath()), { recursive: true });
+  fs.mkdirSync(backupDir, { recursive: true });
+  fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
+
+  ipcMain.on('app:confirm-quit', () => {
+    requestQuitFromRenderer();
+  });
+
+  ipcMain.on('app:cancel-quit', () => {
+    // El renderer canceló el cierre; la ventana permanece abierta.
+  });
 
   try {
     startBackendProcess();
@@ -241,11 +311,16 @@ app.whenReady().then(async () => {
     createMainWindow();
   } catch (error) {
     console.error('No se pudo iniciar SmarTable:', error);
+    allowQuit = true;
     app.quit();
   }
 });
 
 app.on('window-all-closed', () => {
+  if (!allowQuit) {
+    return;
+  }
+  app.isQuitting = true;
   stopFrontendProcess();
   stopBackendProcess();
   if (process.platform !== 'darwin') {
@@ -253,9 +328,20 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  stopFrontendProcess();
-  stopBackendProcess();
+app.on('before-quit', (event) => {
+  if (allowQuit) {
+    app.isQuitting = true;
+    stopFrontendProcess();
+    stopBackendProcess();
+    return;
+  }
+
+  event.preventDefault();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('app:request-close');
+  } else {
+    requestQuitFromRenderer();
+  }
 });
 
 app.on('activate', () => {

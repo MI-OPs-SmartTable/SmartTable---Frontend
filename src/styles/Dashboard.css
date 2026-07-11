@@ -569,3 +569,254 @@ html, body, #root {
 .db-user:hover .db-user-chevron {
   transform: translateX(2px);
 }
+
+/* Cerrar caja y sesion modal */
+.db-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  background: rgba(17, 24, 39, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.db-close-modal {
+  width: min(560px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: #f7f8fb;
+  border-radius: 18px;
+  border: 1px solid #dfe4ef;
+  padding: 18px 22px;
+  box-shadow: 0 20px 50px rgba(17, 24, 39, 0.25);
+}
+
+.db-close-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.db-close-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #17223a;
+}
+
+.db-close-x {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8f9ab0;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.db-close-warning {
+  border: 1px solid #f2c66b;
+  background: #fff7e3;
+  color: #a5620a;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.db-close-summary {
+  background: #eef1f7;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.db-close-row,
+.db-close-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #51607a;
+  padding: 5px 2px;
+}
+
+.db-close-row strong,
+.db-close-total strong {
+  font-size: 14px;
+  color: #162139;
+}
+
+.db-close-row strong.ok { color: #18a35a; }
+.db-close-row strong.info { color: #316ef7; }
+.db-close-row strong.bad { color: #eb3b4f; }
+
+.db-close-total {
+  border-top: 1px solid #d5dced;
+  margin-top: 6px;
+  padding-top: 8px;
+  font-weight: 600;
+}
+
+.db-close-total strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.db-close-section {
+  margin-bottom: 14px;
+}
+
+.db-close-label {
+  font-size: 13px;
+  color: #445675;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.db-close-gastos-list {
+  background: #eef1f7;
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 36px;
+}
+
+.db-close-gastos-list p {
+  color: #90a1be;
+  font-size: 14px;
+  text-align: center;
+}
+
+.db-close-gasto-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: #475a77;
+  padding: 4px 0;
+}
+
+.db-close-gasto-item strong {
+  color: #d62f42;
+}
+
+.db-close-add-gasto {
+  display: grid;
+  grid-template-columns: 1fr 100px 42px;
+  gap: 8px;
+}
+
+.db-close-add-gasto input {
+  border: 1px solid #d6dded;
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px 12px;
+  color: #1a2942;
+  font-size: 15px;
+  outline: none;
+}
+
+.db-close-add-gasto input:focus {
+  border-color: #eb8c2f;
+  box-shadow: 0 0 0 3px rgba(235, 140, 47, 0.2);
+}
+
+.db-close-add-gasto button {
+  border: 0;
+  border-radius: 12px;
+  background: #d4dbea;
+  color: #2f405f;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.db-close-help {
+  color: #5b6d8d;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+
+
+.db-close-error {
+  color: #d62f42;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.db-close-loading {
+  color: #65789a;
+  font-size: 14px;
+}
+
+.db-close-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.db-close-cancel,
+.db-close-confirm {
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.db-close-cancel {
+  background: #f2f5fb;
+  border-color: #d3dced;
+  color: #435979;
+}
+
+.db-close-confirm {
+  background: #ff3144;
+  color: #fff;
+}
+
+.db-close-cancel:disabled,
+.db-close-confirm:disabled,
+.db-close-add-gasto button:disabled,
+.db-close-x:disabled,
+.db-close-add-gasto input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .db-close-modal {
+    width: 100%;
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  .db-close-header h3 {
+    font-size: 18px;
+  }
+
+  .db-close-row strong,
+  .db-close-total strong {
+    font-size: 13px;
+  }
+
+  .db-close-add-gasto {
+    grid-template-columns: 1fr;
+  }
+
+  .db-close-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .db-close-cancel,
+  .db-close-confirm {
+    font-size: 14px;
+  }
+}

@@ -4,9 +4,11 @@ const baseUrl = import.meta.env.VITE_API_URL as string | undefined;
 
 function resolveBaseUrl(): string {
   if (!baseUrl || !baseUrl.trim()) {
-    throw new Error(
-      "VITE_API_URL no está definida. Crea .env en la raíz del frontend tomando .env.example como guía"
-    );
+    // Fallback seguro para evitar romper toda la app cuando falta .env local.
+    if (typeof window !== "undefined") {
+      console.warn("VITE_API_URL no está definida; usando fallback '/api'.");
+    }
+    return "/api";
   }
   return baseUrl.replace(/\/$/, "");
 }
@@ -96,4 +98,31 @@ export const apiClient = {
   patch: <T>(path: string, body?: unknown, auth = true) =>
     request<T>("PATCH", path, { auth, body }),
   delete: <T>(path: string, auth = true) => request<T>("DELETE", path, { auth }),
+  /** Sube un cuerpo binario (p. ej. respaldo .db.gz) sin JSON. */
+  postBinary: async <T>(
+    path: string,
+    body: ArrayBuffer | Blob,
+    options: { auth?: boolean; contentType?: string; fileName?: string } = {}
+  ): Promise<T> => {
+    const { auth = true, contentType = "application/octet-stream", fileName } = options;
+    const headers: Record<string, string> = {
+      "Content-Type": contentType,
+    };
+    if (fileName) {
+      headers["X-Backup-Filename"] = encodeURIComponent(fileName);
+    }
+    if (auth) {
+      const token = getToken();
+      if (!token) {
+        throw new ApiError("Sesión no iniciada", 401);
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const url = `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+    const response = await fetch(url, { method: "POST", headers, body });
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    return parseResponse<T>(response);
+  },
 };

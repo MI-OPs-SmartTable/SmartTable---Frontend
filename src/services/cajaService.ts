@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from "../lib/apiClient";
+import { apiClient } from "../lib/apiClient";
 import type { ApiCajaRecord } from "../lib/mappers/cajaMapper";
 
 export type CajaApi = ApiCajaRecord;
@@ -7,13 +7,18 @@ export async function fetchCajas(): Promise<CajaApi[]> {
   return apiClient.get<CajaApi[]>("/cajas");
 }
 
+export async function fetchCajaById(cajaId: string): Promise<CajaApi> {
+  return apiClient.get<CajaApi>(`/cajas/${cajaId}`);
+}
+
+/** Caja abierta del usuario (sin usar el endpoint 404 de /abierta/{id}). */
 export async function fetchCajaAbierta(usuarioId: string): Promise<CajaApi | null> {
-  try {
-    return await apiClient.get<CajaApi>(`/cajas/abierta/${usuarioId}`);
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 404) return null;
-    throw e;
-  }
+  const cajas = await fetchCajas();
+  return (
+    cajas.find(
+      (caja) => caja.usuario_id === usuarioId && caja.estado === "abierta"
+    ) ?? null
+  );
 }
 
 export async function abrirCaja(usuarioId: string, montoApertura: number): Promise<CajaApi> {
@@ -36,6 +41,10 @@ export type GastoCajaApi = {
   categoria: string;
   created_at: string;
 };
+
+export async function fetchGastos(): Promise<GastoCajaApi[]> {
+  return apiClient.get<GastoCajaApi[]>("/gastos-caja");
+}
 
 export async function fetchGastosPorCaja(cajaId: string): Promise<GastoCajaApi[]> {
   return apiClient.get<GastoCajaApi[]>(`/gastos-caja/caja/${cajaId}`);

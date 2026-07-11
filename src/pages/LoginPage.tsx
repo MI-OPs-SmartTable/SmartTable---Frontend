@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { 
   saveSession, 
@@ -9,6 +9,8 @@ import {
 } from "../auth/authService";
 import { fetchUsuariosParaLogin } from "../services/authUsuariosService";
 import { mapAuthUsuarioToLoginOption } from "../lib/mappers/usuarioMapper";
+import { waitForBackendReady } from "../lib/waitForBackend";
+import { getResumePath } from "../lib/sessionResume";
 import "../styles/LoginPage.css";
 
 // ============================================
@@ -169,6 +171,8 @@ export default function LoginPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<{ id: string; username: string; nombre: string; rol: string }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState("");
+  const [loadingStatus, setLoadingStatus] = useState("Cargando usuarios…");
   const selectRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLInputElement>(null);
 
@@ -182,20 +186,45 @@ export default function LoginPage() {
     return roles[rol] || rol;
   };
 
-  // Cargar usuarios activos desde el backend
-  useEffect(() => {
-    const cargarUsuarios = async () => {
-      try {
-        setLoadingUsers(true);
-        const usuarios = await fetchUsuariosParaLogin();
-        setAvailableUsers(usuarios.map(mapAuthUsuarioToLoginOption));
-      } catch (error) {
-        console.error("Error cargando usuarios:", error);
-      } finally {
-        setLoadingUsers(false);
+  const cargarUsuarios = async (opts?: { waitForBackend?: boolean }) => {
+    setLoadingUsers(true);
+    setUsersError("");
+    setLoadingStatus(
+      opts?.waitForBackend
+        ? "Esperando al servidor…"
+        : "Cargando usuarios…"
+    );
+
+    try {
+      if (opts?.waitForBackend) {
+        const ready = await waitForBackendReady({ timeoutMs: 45000, intervalMs: 700 });
+        if (!ready) {
+          throw new Error("El servidor no respondió a tiempo");
+        }
       }
-    };
-    cargarUsuarios();
+
+      const usuarios = await fetchUsuariosParaLogin();
+      const mapped = usuarios.map(mapAuthUsuarioToLoginOption);
+      setAvailableUsers(mapped);
+      setUsersError("");
+      // Si solo hay un usuario, seleccionarlo para poder escribir el PIN de inmediato
+      if (mapped.length === 1) {
+        setSelectedUser(mapped[0].username);
+      }
+    } catch (error) {
+      console.error("Error cargando usuarios:", error);
+      setAvailableUsers([]);
+      setUsersError(
+        "No se pudo conectar con el servidor. Si acabas de restaurar un respaldo, espera unos segundos y reintenta."
+      );
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Cargar usuarios activos desde el backend (con reintento si aún reinicia)
+  useEffect(() => {
+    void cargarUsuarios({ waitForBackend: true });
   }, []);
 
   // Cerrar dropdown al hacer click fuera
@@ -234,10 +263,13 @@ export default function LoginPage() {
       const data = await apiLogin(selectedUser, pin);  
       saveSession(data.token, data.expiresIn);
       setBanner({ type: "ok", msg: `¡Bienvenido, ${data.user.nombre}!` });
-      
+
+      // Si el token había caducado pero la caja sigue abierta en BD,
+      // reanudamos en la última pantalla permitida para ese rol.
+      const resumePath = getResumePath(data.user.rol);
       setTimeout(() => {
-        navigate("/dashboard");
-      }, 1000);
+        navigate(resumePath);
+      }, 600);
       
     } catch (err: any) {
       clearSession();
@@ -277,7 +309,44 @@ export default function LoginPage() {
         <div className="pl-right">
           <div className="pl-form-wrap" style={{ textAlign: "center" }}>
             <Spinner />
-            <p style={{ marginTop: 20, color: "var(--ash)" }}>Cargando...</p>
+            <p style={{ marginTop: 20, color: "var(--ash)" }}>{loadingStatus}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (usersError && availableUsers.length === 0) {
+    return (
+      <div className="pl-root">
+        <div className="pl-left">
+          <div className="pl-left-bg" />
+          <div className="pl-brand">
+            <div className="pl-brand-mark"><IconPOS /></div>
+            <div>
+              <div className="pl-brand-name">SmarTable</div>
+              <div className="pl-brand-tag">Sistema de Punto de Venta</div>
+            </div>
+          </div>
+          <div className="pl-hero">
+            <div className="pl-hero-label">Acceso al sistema</div>
+            <h1 className="pl-hero-title">Control total<br />de cada <em>venta</em></h1>
+            <p className="pl-hero-sub">Gestiona productos, registra ventas y controla tu caja de forma rápida, sencilla y eficiente desde un solo lugar</p>
+          </div>
+        </div>
+        <div className="pl-right">
+          <div className="pl-form-wrap" style={{ textAlign: "center" }}>
+            <div className="pl-banner err" style={{ textAlign: "left", marginBottom: 16 }}>
+              <IconAlert />
+              {usersError}
+            </div>
+            <button
+              type="button"
+              className="pl-submit"
+              onClick={() => void cargarUsuarios({ waitForBackend: true })}
+            >
+              Reintentar
+            </button>
           </div>
         </div>
       </div>
@@ -377,32 +446,58 @@ export default function LoginPage() {
                     ref={pinRef}
                     id="pos-pin"
                     className={`pl-input${fieldErrs.pin ? " err" : ""}`}
-                    type={showPin ? "text" : "password"}
+                    type="text"
                     inputMode="numeric"
-                    pattern="\d*"
+                    autoComplete="one-time-code"
                     maxLength={4}
-                    placeholder="****"
-                    autoComplete="off"
+                    placeholder={selectedUser ? "····" : "Elige un usuario primero"}
                     value={pin}
-                    disabled={loading || !selectedUser}
+                    disabled={loading}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, "").slice(0, 4);
                       setPin(value);
-                      setFieldErrs(p => ({...p, pin: undefined}));
+                      setFieldErrs((p) => ({ ...p, pin: undefined }));
                     }}
-                    style={{ paddingRight: 44, textAlign: "center", letterSpacing: "4px", fontSize: "18px" }}
+                    onKeyDown={(e) => {
+                      // Permitir control/navegación; bloquear letras
+                      if (
+                        e.ctrlKey ||
+                        e.metaKey ||
+                        e.altKey ||
+                        ["Backspace", "Delete", "Tab", "Enter", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)
+                      ) {
+                        return;
+                      }
+                      if (!/^\d$/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    style={{
+                      paddingRight: 44,
+                      textAlign: "center",
+                      letterSpacing: "4px",
+                      fontSize: "18px",
+                      // Evita el bug de type=password en Electron con input controlado
+                      WebkitTextSecurity: showPin ? "none" : "disc",
+                    } as CSSProperties}
                   />
                   <span className="pl-input-icon"><IconLock /></span>
                   <button
                     type="button"
                     className="pl-eye"
                     tabIndex={-1}
-                    onClick={() => setShowPin(v => !v)}
-                    disabled={!selectedUser}
+                    onClick={() => setShowPin((v) => !v)}
+                    disabled={loading}
+                    aria-label={showPin ? "Ocultar PIN" : "Mostrar PIN"}
                   >
                     <IconEye open={showPin} />
                   </button>
                 </div>
+                {!selectedUser && (
+                  <div className="pl-field-err" style={{ color: "var(--ash)" }}>
+                    Selecciona un usuario para continuar
+                  </div>
+                )}
                 {fieldErrs.pin && (
                   <div className="pl-field-err"><IconAlert />{fieldErrs.pin}</div>
                 )}
