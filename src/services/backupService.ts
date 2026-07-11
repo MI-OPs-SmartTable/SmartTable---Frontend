@@ -40,3 +40,20 @@ export async function runBackupNow(): Promise<{
 }> {
   return apiClient.post("/backup/run");
 }
+
+export async function restoreBackupFromFile(file: File): Promise<{
+  success: boolean;
+  requiresRestart: boolean;
+  message: string;
+  safetyBackup: string | null;
+}> {
+  const lower = file.name.toLowerCase();
+  const contentType = lower.endsWith(".gz")
+    ? "application/gzip"
+    : "application/octet-stream";
+
+  return apiClient.postBinary("/backup/restore", file, {
+    contentType,
+    fileName: file.name,
+  });
+}

@@ -4,10 +4,12 @@ import {
   deleteBackupCredentials,
   fetchBackupConfig,
   fetchBackupCredentialsStatus,
+  restoreBackupFromFile,
   runBackupNow,
   startBackupOAuth,
   updateBackupConfig,
 } from "../../services/backupService";
+import { clearSession } from "../../auth/authService";
 
 const ORANGE = "#F97316";
 
@@ -166,6 +168,8 @@ export default function RespaldoTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [connectingOAuth, setConnectingOAuth] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -370,6 +374,39 @@ export default function RespaldoTab() {
     }
   };
 
+  const handleRestore = async () => {
+    if (!restoreFile) {
+      setError("Selecciona el archivo de respaldo descargado de Drive (.db.gz).");
+      return;
+    }
+
+    const ok = window.confirm(
+      "Esto reemplazará TODOS los datos actuales por los del archivo.\n\n" +
+        "Se guardará una copia de seguridad previa y la app se reiniciará.\n\n" +
+        "¿Continuar?"
+    );
+    if (!ok) return;
+
+    setRestoring(true);
+    setError("");
+    setSuccess("");
+    try {
+      const result = await restoreBackupFromFile(restoreFile);
+      setSuccess(
+        result.message +
+          (result.safetyBackup ? ` Copia previa: ${result.safetyBackup}.` : "")
+      );
+      setRestoreFile(null);
+      clearSession();
+      window.setTimeout(() => {
+        window.location.href = "/login";
+      }, 1800);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo restaurar el respaldo");
+      setRestoring(false);
+    }
+  };
+
   if (loading) {
     return <div className="cfg-loading"><p>Cargando respaldo...</p></div>;
   }
@@ -537,6 +574,66 @@ export default function RespaldoTab() {
             <div style={{ color: "#b91c1c" }}><strong>Error:</strong> {config.lastRunError}</div>
           )}
         </div>
+      </section>
+
+      <section
+        style={{
+          borderTop: "1px solid #f3f4f6",
+          paddingTop: 20,
+          display: "grid",
+          gap: 14,
+        }}
+      >
+        <div>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#111827" }}>Restaurar desde archivo</h3>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "#6b7280", lineHeight: 1.5 }}>
+            Sube el archivo que se guarda en Google Drive (normalmente{" "}
+            <code style={{ fontSize: 12 }}>smarttable-backup.db.gz</code>
+            ). Reemplaza todos los datos actuales y reinicia el servidor.
+          </p>
+        </div>
+
+        <Field
+          label="Archivo de respaldo"
+          hint="Formatos: .db.gz (recomendado), .db o .sqlite"
+        >
+          <input
+            type="file"
+            accept=".gz,.db,.sqlite,application/gzip,application/octet-stream"
+            disabled={restoring}
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              setRestoreFile(file);
+              setError("");
+              setSuccess("");
+            }}
+            style={{ ...inputStyle, padding: "8px 10px" }}
+          />
+          {restoreFile && (
+            <span style={{ fontSize: 12, color: "#047857" }}>
+              Seleccionado: {restoreFile.name} ({formatBytes(restoreFile.size)})
+            </span>
+          )}
+        </Field>
+
+        <button
+          type="button"
+          onClick={handleRestore}
+          disabled={restoring || !restoreFile}
+          style={{
+            padding: "11px 22px",
+            borderRadius: 999,
+            border: "1.5px solid #fecaca",
+            background: restoring || !restoreFile ? "#fee2e2" : "#fff1f2",
+            color: "#b91c1c",
+            fontWeight: 700,
+            cursor: restoring || !restoreFile ? "default" : "pointer",
+            fontSize: 14,
+            width: "fit-content",
+          }}
+        >
+          {restoring ? "Restaurando…" : "Restaurar base de datos"}
+        </button>
       </section>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>

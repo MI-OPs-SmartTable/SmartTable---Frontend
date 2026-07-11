@@ -129,10 +129,27 @@ function startBackendProcess() {
   });
 
   backendProcess.on('exit', (code) => {
+    const proc = backendProcess;
     backendProcess = null;
+
+    // 42 = restauración de BD: reiniciar backend automáticamente
+    if (code === 42 && !app.isQuitting) {
+      console.log('[electron] Backend pidió reinicio tras restaurar BD...');
+      setTimeout(() => {
+        try {
+          startBackendProcess();
+        } catch (err) {
+          console.error('[electron] No se pudo reiniciar el backend:', err);
+        }
+      }, 400);
+      return;
+    }
+
     if (code && code !== 0) {
       console.error(`Backend finalizó con código ${code}`);
     }
+
+    void proc;
   });
 }
 
@@ -269,6 +286,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  app.isQuitting = true;
   stopFrontendProcess();
   stopBackendProcess();
   if (process.platform !== 'darwin') {
@@ -277,6 +295,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  app.isQuitting = true;
   stopFrontendProcess();
   stopBackendProcess();
 });
