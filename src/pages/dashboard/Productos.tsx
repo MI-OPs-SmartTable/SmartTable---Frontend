@@ -283,7 +283,7 @@ export default function Productos() {
             <p className="pr-sub" style={{ color: "var(--err)" }}>{error}</p>
             <p className="pr-sub">Si la base está vacía, ejecute en el backend: npm run seed:pos</p>
           </div>
-          <button type="button" className="pr-btn-new" onClick={cargarDatos}>Reintentar</button>
+          <button type="button" className="pr-btn-new" onClick={() => cargarDatos()}>Reintentar</button>
         </div>
       </div>
     );

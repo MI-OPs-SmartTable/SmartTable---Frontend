@@ -319,7 +319,7 @@ export default function CajaActiva({ caja, usuarioId }: CajaActivaProps) {
           </div>
         </div>
 
-        <ColaboradoresCaja cajaId={caja.id} titularId={usuarioId} />
+        <ColaboradoresCaja cajaId={caja.id} titularId={caja.usuario_id} />
       </div>
     </div>
   );
