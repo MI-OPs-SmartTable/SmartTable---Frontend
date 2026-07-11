@@ -15,6 +15,7 @@ type GastoItem = {
 };
 
 type SessionCloseModalProps = {
+  mode?: "logout" | "quit";
   loadingCloseData: boolean;
   closingSession: boolean;
   closeError: string;
@@ -29,9 +30,11 @@ type SessionCloseModalProps = {
   onAddExtraGasto: () => void;
   onCancel: () => void;
   onConfirm: () => void;
+  onQuitLeavingOpen?: () => void;
 };
 
 export default function SessionCloseModal({
+  mode = "logout",
   loadingCloseData,
   closingSession,
   closeError,
@@ -46,12 +49,15 @@ export default function SessionCloseModal({
   onAddExtraGasto,
   onCancel,
   onConfirm,
+  onQuitLeavingOpen,
 }: SessionCloseModalProps) {
+  const isQuit = mode === "quit";
+
   return (
     <div className="db-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="db-close-title">
       <div className="db-close-modal">
         <div className="db-close-header">
-          <h3 id="db-close-title">Cerrar Caja y Sesión</h3>
+          <h3 id="db-close-title">{isQuit ? "Cerrar caja antes de salir" : "Cerrar Caja y Sesión"}</h3>
           <button
             type="button"
             className="db-close-x"
@@ -63,7 +69,11 @@ export default function SessionCloseModal({
           </button>
         </div>
 
-        <div className="db-close-warning">Debe cerrar la caja antes de cerrar sesión</div>
+        <div className="db-close-warning">
+          {isQuit
+            ? "Hay una caja abierta. Ciérrala para salir, o deja la sesión para continuar después."
+            : "Debe cerrar la caja antes de cerrar sesión"}
+        </div>
 
         {loadingCloseData ? (
           <p className="db-close-loading">Cargando información de caja...</p>
@@ -124,16 +134,31 @@ export default function SessionCloseModal({
               {extraError && <p className="db-close-error">{extraError}</p>}
             </div>
 
-            <p className="db-close-help">¿Está seguro de cerrar la caja y salir? Esta acción no se puede deshacer.</p>
+            <p className="db-close-help">
+              {isQuit
+                ? "Al cerrar caja y salir, deberás iniciar sesión de nuevo. Si sales dejando la caja abierta, al volver continuarás donde quedaste."
+                : "¿Está seguro de cerrar la caja y salir? Esta acción no se puede deshacer."}
+            </p>
 
             {closeError && <p className="db-close-error">{closeError}</p>}
 
-            <div className="db-close-actions">
+            <div className="db-close-actions" style={{ flexWrap: "wrap" }}>
               <button type="button" className="db-close-cancel" onClick={onCancel} disabled={closingSession}>
                 Cancelar
               </button>
+              {isQuit && onQuitLeavingOpen && (
+                <button
+                  type="button"
+                  className="db-close-cancel"
+                  onClick={onQuitLeavingOpen}
+                  disabled={closingSession}
+                  style={{ borderColor: "#fdba74", color: "#9a3412" }}
+                >
+                  Salir dejando caja abierta
+                </button>
+              )}
               <button type="button" className="db-close-confirm" onClick={onConfirm} disabled={closingSession}>
-                {closingSession ? "Cerrando..." : "Cerrar y Salir"}
+                {closingSession ? "Cerrando..." : isQuit ? "Cerrar caja y salir" : "Cerrar y Salir"}
               </button>
             </div>
           </>

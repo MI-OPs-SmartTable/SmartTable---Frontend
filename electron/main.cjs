@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -13,6 +13,7 @@ const isDev = !app.isPackaged && process.env.SMARTTABLE_DEV === '1';
 let mainWindow = null;
 let backendProcess = null;
 let frontendProcess = null;
+let allowQuit = false;
 
 function resolveBackendRoot() {
   if (process.env.SMARTTABLE_BACKEND_PATH) {
@@ -249,9 +250,30 @@ function createMainWindow() {
     return { action: 'deny' };
   });
 
+  mainWindow.on('close', (event) => {
+    if (allowQuit) {
+      return;
+    }
+    event.preventDefault();
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app:request-close');
+    }
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
+}
+
+function requestQuitFromRenderer() {
+  allowQuit = true;
+  app.isQuitting = true;
+  stopFrontendProcess();
+  stopBackendProcess();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();
+  }
+  app.quit();
 }
 
 function stopBackendProcess() {
@@ -269,6 +291,14 @@ app.whenReady().then(async () => {
   fs.mkdirSync(backupDir, { recursive: true });
   fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
 
+  ipcMain.on('app:confirm-quit', () => {
+    requestQuitFromRenderer();
+  });
+
+  ipcMain.on('app:cancel-quit', () => {
+    // El renderer canceló el cierre; la ventana permanece abierta.
+  });
+
   try {
     startBackendProcess();
     await waitForBackend();
@@ -281,11 +311,15 @@ app.whenReady().then(async () => {
     createMainWindow();
   } catch (error) {
     console.error('No se pudo iniciar SmarTable:', error);
+    allowQuit = true;
     app.quit();
   }
 });
 
 app.on('window-all-closed', () => {
+  if (!allowQuit) {
+    return;
+  }
   app.isQuitting = true;
   stopFrontendProcess();
   stopBackendProcess();
@@ -294,10 +328,20 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('before-quit', () => {
-  app.isQuitting = true;
-  stopFrontendProcess();
-  stopBackendProcess();
+app.on('before-quit', (event) => {
+  if (allowQuit) {
+    app.isQuitting = true;
+    stopFrontendProcess();
+    stopBackendProcess();
+    return;
+  }
+
+  event.preventDefault();
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('app:request-close');
+  } else {
+    requestQuitFromRenderer();
+  }
 });
 
 app.on('activate', () => {

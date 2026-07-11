@@ -42,6 +42,10 @@ export type GastoCajaApi = {
   created_at: string;
 };
 
+export async function fetchGastos(): Promise<GastoCajaApi[]> {
+  return apiClient.get<GastoCajaApi[]>("/gastos-caja");
+}
+
 export async function fetchGastosPorCaja(cajaId: string): Promise<GastoCajaApi[]> {
   return apiClient.get<GastoCajaApi[]>(`/gastos-caja/caja/${cajaId}`);
 }

@@ -4,12 +4,15 @@ import {
   deleteBackupCredentials,
   fetchBackupConfig,
   fetchBackupCredentialsStatus,
+  previewBackupFile,
   restoreBackupFromFile,
   runBackupNow,
   startBackupOAuth,
   updateBackupConfig,
+  type BackupRestorePreview,
 } from "../../services/backupService";
 import { clearSession } from "../../auth/authService";
+import { waitForBackendReady } from "../../lib/waitForBackend";
 
 const ORANGE = "#F97316";
 
@@ -170,6 +173,8 @@ export default function RespaldoTab() {
   const [running, setRunning] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restorePreview, setRestorePreview] = useState<BackupRestorePreview | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const [connectingOAuth, setConnectingOAuth] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -374,16 +379,42 @@ export default function RespaldoTab() {
     }
   };
 
+  const handleRestoreFileChange = async (file: File | null) => {
+    setRestoreFile(file);
+    setRestorePreview(null);
+    setError("");
+    setSuccess("");
+    if (!file) return;
+
+    setPreviewing(true);
+    try {
+      const preview = await previewBackupFile(file);
+      setRestorePreview(preview);
+      if (preview.aviso) {
+        setError(preview.aviso);
+      }
+    } catch (e) {
+      setRestoreFile(null);
+      setError(e instanceof Error ? e.message : "No se pudo leer el archivo de respaldo");
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
   const handleRestore = async () => {
     if (!restoreFile) {
       setError("Selecciona el archivo de respaldo descargado de Drive (.db.gz).");
       return;
     }
 
+    const resumen = restorePreview
+      ? `\n\nContenido del archivo:\n- ${restorePreview.usuarios} usuario(s): ${(restorePreview.nombresUsuarios || []).join(", ") || "—"}\n- ${restorePreview.productos} producto(s)\n- ${restorePreview.mesas} mesa(s)\n- ${restorePreview.insumos} insumo(s)`
+      : "";
+
     const ok = window.confirm(
-      "Esto reemplazará TODOS los datos actuales por los del archivo.\n\n" +
-        "Se guardará una copia de seguridad previa y la app se reiniciará.\n\n" +
-        "¿Continuar?"
+      "Esto reemplazará TODOS los datos actuales por los del archivo." +
+        resumen +
+        "\n\nSe guardará una copia previa y la app se reiniciará.\n\n¿Continuar?"
     );
     if (!ok) return;
 
@@ -393,14 +424,20 @@ export default function RespaldoTab() {
     try {
       const result = await restoreBackupFromFile(restoreFile);
       setSuccess(
-        result.message +
-          (result.safetyBackup ? ` Copia previa: ${result.safetyBackup}.` : "")
+        (result.message || "Base restaurada.") +
+          " Esperando a que el servidor vuelva a estar listo…"
       );
       setRestoreFile(null);
+      setRestorePreview(null);
       clearSession();
-      window.setTimeout(() => {
-        window.location.href = "/login";
-      }, 1800);
+
+      const ready = await waitForBackendReady({ timeoutMs: 45000, intervalMs: 700 });
+      if (!ready) {
+        setSuccess(
+          "Base restaurada, pero el servidor tardó en responder. En el login usa Reintentar."
+        );
+      }
+      window.location.href = "/login";
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo restaurar el respaldo");
       setRestoring(false);
@@ -600,34 +637,51 @@ export default function RespaldoTab() {
           <input
             type="file"
             accept=".gz,.db,.sqlite,application/gzip,application/octet-stream"
-            disabled={restoring}
+            disabled={restoring || previewing}
             onChange={(e) => {
               const file = e.target.files?.[0] ?? null;
-              setRestoreFile(file);
-              setError("");
-              setSuccess("");
+              void handleRestoreFileChange(file);
             }}
             style={{ ...inputStyle, padding: "8px 10px" }}
           />
-          {restoreFile && (
-            <span style={{ fontSize: 12, color: "#047857" }}>
-              Seleccionado: {restoreFile.name} ({formatBytes(restoreFile.size)})
-            </span>
+          {previewing && (
+            <span style={{ fontSize: 12, color: "#6b7280" }}>Analizando archivo…</span>
+          )}
+          {restoreFile && restorePreview && (
+            <div
+              style={{
+                marginTop: 4,
+                padding: "10px 12px",
+                borderRadius: 8,
+                background: restorePreview.aviso ? "#fff7ed" : "#ecfdf5",
+                border: `1px solid ${restorePreview.aviso ? "#fed7aa" : "#a7f3d0"}`,
+                fontSize: 12.5,
+                color: "#374151",
+                lineHeight: 1.5,
+              }}
+            >
+              <div><strong>Archivo:</strong> {restoreFile.name} ({formatBytes(restoreFile.size)})</div>
+              <div><strong>Usuarios:</strong> {restorePreview.usuarios} {(restorePreview.nombresUsuarios || []).length ? `(${restorePreview.nombresUsuarios.join(", ")})` : ""}</div>
+              <div><strong>Productos:</strong> {restorePreview.productos} · <strong>Mesas:</strong> {restorePreview.mesas} · <strong>Insumos:</strong> {restorePreview.insumos}</div>
+              {restorePreview.aviso && (
+                <div style={{ marginTop: 6, color: "#9a3412" }}>{restorePreview.aviso}</div>
+              )}
+            </div>
           )}
         </Field>
 
         <button
           type="button"
           onClick={handleRestore}
-          disabled={restoring || !restoreFile}
+          disabled={restoring || previewing || !restoreFile || !restorePreview}
           style={{
             padding: "11px 22px",
             borderRadius: 999,
             border: "1.5px solid #fecaca",
-            background: restoring || !restoreFile ? "#fee2e2" : "#fff1f2",
+            background: restoring || previewing || !restoreFile || !restorePreview ? "#fee2e2" : "#fff1f2",
             color: "#b91c1c",
             fontWeight: 700,
-            cursor: restoring || !restoreFile ? "default" : "pointer",
+            cursor: restoring || previewing || !restoreFile || !restorePreview ? "default" : "pointer",
             fontSize: 14,
             width: "fit-content",
           }}

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router-dom";
+import { Outlet, useNavigate, useLocation, Navigate } from "react-router-dom";
+import { isSessionValid, clearSession } from "../auth/authService";
 import { usePosSession } from "../context/PosSessionContext";
 import SessionCloseModal from "../components/SessionCloseModal";
 import DashboardSidebar from "../components/DashboardSidebar";
 import { useSessionCloseFlow } from "../hooks/useSessionCloseFlow";
 import { DASHBOARD_ICONS, DASHBOARD_NAV_ITEMS, getRolLabel } from "./dashboard.constants";
+import { saveLastDashboardPath } from "../lib/sessionResume";
 import "../styles/Dashboard.css";
 
 export default function DashboardLayout() {
@@ -30,6 +32,10 @@ export default function DashboardLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
+    saveLastDashboardPath(location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
@@ -40,6 +46,21 @@ export default function DashboardLayout() {
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
+
+  // Registrar manejador de cierre de app (Electron)
+  const closeRequestRef = useRef(closeFlow.handleAppCloseRequest);
+  closeRequestRef.current = closeFlow.handleAppCloseRequest;
+
+  useEffect(() => {
+    window.__smarttableOnCloseRequest = () => {
+      void closeRequestRef.current();
+    };
+    return () => {
+      if (window.__smarttableOnCloseRequest) {
+        delete window.__smarttableOnCloseRequest;
+      }
+    };
+  }, []);
 
   const goTo = (path: string) => {
     navigate(path);
@@ -52,7 +73,6 @@ export default function DashboardLayout() {
 
   const showHeader = location.pathname === "/dashboard";
 
-  // Obtener inicial para el avatar
   const getAvatarInitial = () => {
     if (userName) return userName.charAt(0).toUpperCase();
     if (rol === "admin") return "A";
@@ -60,6 +80,11 @@ export default function DashboardLayout() {
     if (rol === "mesero") return "M";
     return "U";
   };
+
+  if (!isSessionValid()) {
+    clearSession();
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="db-root">
@@ -106,6 +131,7 @@ export default function DashboardLayout() {
 
       {closeFlow.showCloseSessionModal && (
         <SessionCloseModal
+          mode={closeFlow.closeMode}
           loadingCloseData={closeFlow.loadingCloseData}
           closingSession={closeFlow.closingSession}
           closeError={closeFlow.closeError}
@@ -119,6 +145,7 @@ export default function DashboardLayout() {
           onExtraMontoChange={closeFlow.setExtraMonto}
           onAddExtraGasto={closeFlow.handleAddExtraGasto}
           onCancel={closeFlow.handleCancelCloseSession}
+          onQuitLeavingOpen={closeFlow.handleQuitLeavingCajaOpen}
           onConfirm={() => {
             void closeFlow.handleConfirmCloseSession();
           }}

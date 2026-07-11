@@ -4,13 +4,31 @@ import CajaEstado from "../../components/CajaEstado";
 import CajaActiva from "../../components/CajaActiva";
 import CajaHistorial from "../../components/CajaHistorial";
 import AperturaCajaModal from "../../components/AperturaCajaModal";
+import CierreCajaModal, {
+  type ResumenCierreCaja,
+} from "../../components/CierreCajaModal";
 import { usePosSession } from "../../context/PosSessionContext";
 import { mapCajaHistorialItem } from "../../lib/mappers/cajaMapper";
-import { abrirCaja, cerrarCaja, fetchCajas } from "../../services/cajaService";
+import {
+  abrirCaja,
+  cerrarCaja,
+  fetchCajas,
+  fetchGastos,
+  fetchGastosPorCaja,
+} from "../../services/cajaService";
 import { fetchUsuarios } from "../../services/configService";
 import { fetchVentas } from "../../services/ventasService";
 import type { CierreCaja } from "./types/caja.types";
 import "../../styles/Caja.css";
+
+const RESUMEN_VACIO: ResumenCierreCaja = {
+  baseInicial: 0,
+  totalEfectivo: 0,
+  totalTransferencias: 0,
+  totalVentas: 0,
+  totalGastos: 0,
+  saldoNeto: 0,
+};
 
 export default function Caja() {
   const {
@@ -23,6 +41,8 @@ export default function Caja() {
   } = usePosSession();
 
   const [showAperturaModal, setShowAperturaModal] = useState(false);
+  const [showCierreModal, setShowCierreModal] = useState(false);
+  const [resumenCierre, setResumenCierre] = useState<ResumenCierreCaja>(RESUMEN_VACIO);
   const [historial, setHistorial] = useState<CierreCaja[]>([]);
   const [loadingHistorial, setLoadingHistorial] = useState(true);
   const [closingCaja, setClosingCaja] = useState(false);
@@ -31,10 +51,11 @@ export default function Caja() {
   const loadHistorial = useCallback(async () => {
     setLoadingHistorial(true);
     try {
-      const [cajas, ventas, usuarios] = await Promise.all([
+      const [cajas, ventas, usuarios, gastos] = await Promise.all([
         fetchCajas(),
         fetchVentas(),
         fetchUsuarios().catch(() => []),
+        fetchGastos().catch(() => []),
       ]);
 
       const usuariosPorId = new Map(
@@ -52,11 +73,18 @@ export default function Caja() {
       setHistorial(
         cerradas.map((item) => {
           const ventasCaja = ventas.filter((venta) => venta.caja_id === item.id);
+          const gastosCaja = gastos
+            .filter((gasto) => gasto.caja_id === item.id)
+            .map((gasto) => ({
+              id: gasto.id,
+              descripcion: gasto.descripcion,
+              monto: Number(gasto.monto),
+            }));
           const nombre =
             usuariosPorId.get(item.usuario_id) ??
             (item.usuario_id === usuario?.id ? usuario.nombre_completo : "Usuario");
 
-          return mapCajaHistorialItem(item, nombre, ventasCaja);
+          return mapCajaHistorialItem(item, nombre, ventasCaja, gastosCaja);
         })
       );
     } catch (err) {
@@ -75,26 +103,71 @@ export default function Caja() {
       throw new Error("No hay un usuario activo para abrir caja");
     }
 
-    const abierta = await abrirCaja(usuario.id, dineroBase);
-    setCajaFromResponse(abierta);
-    await refreshCaja();
-    setShowAperturaModal(false);
-    setActionError("");
+    try {
+      const abierta = await abrirCaja(usuario.id, dineroBase);
+      setCajaFromResponse(abierta);
+      await refreshCaja();
+      setShowAperturaModal(false);
+      setActionError("");
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "No se pudo abrir la caja";
+      setActionError(message);
+      throw err;
+    }
   };
 
-  const handleCerrarCaja = async () => {
+  const openCierreModal = async () => {
     if (!caja?.id) return;
+    setActionError("");
+    try {
+      const [ventas, gastos] = await Promise.all([
+        fetchVentas(),
+        fetchGastosPorCaja(caja.id),
+      ]);
+      const ventasCaja = ventas.filter((venta) => venta.caja_id === caja.id);
+      const baseInicial = Number(caja.monto_apertura ?? 0);
+      const totalEfectivo = ventasCaja.reduce(
+        (sum, venta) => sum + Number(venta.monto_efectivo),
+        0
+      );
+      const totalTransferencias = ventasCaja.reduce(
+        (sum, venta) => sum + Number(venta.monto_transferencia),
+        0
+      );
+      const totalVentas = ventasCaja.reduce(
+        (sum, venta) => sum + Number(venta.total),
+        0
+      );
+      const totalGastos = gastos.reduce((sum, gasto) => sum + Number(gasto.monto), 0);
 
-    const confirmar = window.confirm(
-      "¿Cerrar la caja? No podrás registrar ventas hasta abrirla de nuevo."
-    );
-    if (!confirmar) return;
+      setResumenCierre({
+        baseInicial,
+        totalEfectivo,
+        totalTransferencias,
+        totalVentas,
+        totalGastos,
+        saldoNeto: baseInicial + totalVentas - totalGastos,
+      });
+      setShowCierreModal(true);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "No se pudo preparar el cierre de caja"
+      );
+    }
+  };
+
+  const handleConfirmarCierre = async () => {
+    if (!caja?.id) return;
 
     setClosingCaja(true);
     setActionError("");
     try {
       await cerrarCaja(caja.id);
       setCajaFromResponse(null);
+      setShowCierreModal(false);
       await refreshCaja();
       await loadHistorial();
     } catch (err) {
@@ -117,13 +190,12 @@ export default function Caja() {
         </div>
         <button
           type="button"
-          className="caja-btn-abrir"
-          style={{ backgroundColor: cajaAbierta ? "#22C55E" : "#ef4444" }}
-          onClick={cajaAbierta ? handleCerrarCaja : () => setShowAperturaModal(true)}
+          className={`caja-btn-abrir ${cajaAbierta ? "cerrar" : "abrir"}`}
+          onClick={cajaAbierta ? () => void openCierreModal() : () => setShowAperturaModal(true)}
           disabled={closingCaja}
         >
           <LockIcon size={16} color="#fff" />
-          {closingCaja ? "Cerrando..." : cajaAbierta ? "Caja Abierta" : "Caja Cerrada"}
+          {cajaAbierta ? "Cerrar caja" : "Abrir caja"}
         </button>
       </div>
 
@@ -133,7 +205,7 @@ export default function Caja() {
         <CajaEstado
           cajaAbierta={false}
           onAbrir={() => setShowAperturaModal(true)}
-          onCerrar={handleCerrarCaja}
+          onCerrar={() => void openCierreModal()}
         />
       ) : (
         <CajaActiva caja={caja} usuarioId={usuario?.id ?? ""} />
@@ -149,6 +221,15 @@ export default function Caja() {
         <AperturaCajaModal
           onClose={() => setShowAperturaModal(false)}
           onAbrir={handleAbrirCaja}
+        />
+      )}
+
+      {showCierreModal && (
+        <CierreCajaModal
+          resumen={resumenCierre}
+          loading={closingCaja}
+          onClose={() => setShowCierreModal(false)}
+          onConfirm={handleConfirmarCierre}
         />
       )}
     </div>

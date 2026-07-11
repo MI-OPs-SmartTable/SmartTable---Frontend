@@ -7,7 +7,6 @@ import {
   type GastoCajaApi,
 } from "../services/cajaService";
 import { fetchVentas, type VentaApi } from "../services/ventasService";
-import GastoCajaModal from "./GastoCajaModal";
 import "../styles/Caja.css";
 
 interface CajaActivaProps {
@@ -35,7 +34,11 @@ export default function CajaActiva({ caja, usuarioId }: CajaActivaProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showVentas, setShowVentas] = useState(true);
-  const [showGastoModal, setShowGastoModal] = useState(false);
+  const [showGastoForm, setShowGastoForm] = useState(false);
+  const [descripcion, setDescripcion] = useState("");
+  const [monto, setMonto] = useState("");
+  const [savingGasto, setSavingGasto] = useState(false);
+  const [gastoError, setGastoError] = useState("");
 
   const baseInicial = Number(caja.monto_apertura ?? 0);
 
@@ -73,19 +76,38 @@ export default function CajaActiva({ caja, usuarioId }: CajaActivaProps) {
     (venta) => Number(venta.monto_transferencia) > 0
   ).length;
 
-  const handleGuardarGasto = async (payload: {
-    monto: number;
-    descripcion: string;
-    categoria: string;
-  }) => {
-    await crearGastoCaja({
-      caja_id: caja.id,
-      usuario_id: usuarioId,
-      monto: payload.monto,
-      descripcion: payload.descripcion,
-      categoria: payload.categoria,
-    });
-    await loadData();
+  const resetGastoForm = () => {
+    setDescripcion("");
+    setMonto("");
+    setGastoError("");
+    setShowGastoForm(false);
+  };
+
+  const handleGuardarGasto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const valor = parseInt(monto.replace(/\D/g, ""), 10);
+    if (!valor || !descripcion.trim()) {
+      setGastoError("Descripción y monto son obligatorios");
+      return;
+    }
+
+    setSavingGasto(true);
+    setGastoError("");
+    try {
+      await crearGastoCaja({
+        caja_id: caja.id,
+        usuario_id: usuarioId,
+        monto: valor,
+        descripcion: descripcion.trim(),
+        categoria: "Operativo",
+      });
+      resetGastoForm();
+      await loadData();
+    } catch (err) {
+      setGastoError(err instanceof Error ? err.message : "Error al registrar gasto");
+    } finally {
+      setSavingGasto(false);
+    }
   };
 
   if (loading) {
@@ -167,13 +189,63 @@ export default function CajaActiva({ caja, usuarioId }: CajaActivaProps) {
           </div>
         </div>
 
-        <div className="caja-section-card">
+        <div className="caja-section-card caja-gastos-card">
           <div className="caja-section-header">
             <h3>Gastos / Caja menor</h3>
-            <button type="button" className="caja-add-btn" onClick={() => setShowGastoModal(true)}>
-              + Agregar
-            </button>
+            {!showGastoForm && (
+              <button
+                type="button"
+                className="caja-add-btn"
+                onClick={() => setShowGastoForm(true)}
+              >
+                + Agregar
+              </button>
+            )}
           </div>
+
+          {showGastoForm && (
+            <form className="caja-gasto-form" onSubmit={handleGuardarGasto}>
+              <div className="caja-gasto-form-fields">
+                <input
+                  type="text"
+                  className="caja-gasto-input desc"
+                  placeholder="Descripción del gasto"
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  disabled={savingGasto}
+                  autoFocus
+                />
+                <input
+                  type="text"
+                  className="caja-gasto-input monto"
+                  placeholder="Monto"
+                  value={monto}
+                  onChange={(e) => setMonto(e.target.value.replace(/\D/g, ""))}
+                  disabled={savingGasto}
+                  inputMode="numeric"
+                />
+              </div>
+              {gastoError && <p className="caja-gasto-form-error">{gastoError}</p>}
+              <div className="caja-gasto-form-acts">
+                <button
+                  type="submit"
+                  className="caja-gasto-btn-guardar"
+                  disabled={savingGasto}
+                >
+                  {savingGasto ? "Guardando..." : "Guardar"}
+                </button>
+                <button
+                  type="button"
+                  className="caja-gasto-btn-cancelar"
+                  onClick={resetGastoForm}
+                  disabled={savingGasto}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+
           <div className={`caja-section-body${gastos.length === 0 ? " empty" : ""}`}>
             {gastos.length === 0 ? (
               <p>Sin gastos registrados</p>
@@ -191,13 +263,6 @@ export default function CajaActiva({ caja, usuarioId }: CajaActivaProps) {
           </div>
         </div>
       </div>
-
-      {showGastoModal && (
-        <GastoCajaModal
-          onClose={() => setShowGastoModal(false)}
-          onGuardar={handleGuardarGasto}
-        />
-      )}
     </div>
   );
 }

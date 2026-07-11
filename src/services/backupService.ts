@@ -46,6 +46,16 @@ export async function restoreBackupFromFile(file: File): Promise<{
   requiresRestart: boolean;
   message: string;
   safetyBackup: string | null;
+  userCount?: number;
+  aviso?: string | null;
+  stats?: {
+    usuarios: number;
+    mesas: number;
+    productos: number;
+    insumos: number;
+    categorias: number;
+    nombresUsuarios: string[];
+  };
 }> {
   const lower = file.name.toLowerCase();
   const contentType = lower.endsWith(".gz")
@@ -53,6 +63,31 @@ export async function restoreBackupFromFile(file: File): Promise<{
     : "application/octet-stream";
 
   return apiClient.postBinary("/backup/restore", file, {
+    contentType,
+    fileName: file.name,
+  });
+}
+
+export type BackupRestorePreview = {
+  ok: boolean;
+  fileName: string;
+  sizeBytes: number;
+  usuarios: number;
+  mesas: number;
+  productos: number;
+  insumos: number;
+  categorias: number;
+  nombresUsuarios: string[];
+  aviso: string | null;
+};
+
+export async function previewBackupFile(file: File): Promise<BackupRestorePreview> {
+  const lower = file.name.toLowerCase();
+  const contentType = lower.endsWith(".gz")
+    ? "application/gzip"
+    : "application/octet-stream";
+
+  return apiClient.postBinary("/backup/restore/preview", file, {
     contentType,
     fileName: file.name,
   });

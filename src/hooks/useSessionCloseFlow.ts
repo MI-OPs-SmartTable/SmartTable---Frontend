@@ -21,6 +21,8 @@ type UseSessionCloseFlowParams = {
   setCajaFromResponse: (value: null) => void;
 };
 
+export type SessionCloseMode = "logout" | "quit";
+
 export function useSessionCloseFlow({
   usuario,
   caja,
@@ -29,6 +31,7 @@ export function useSessionCloseFlow({
   setCajaFromResponse,
 }: UseSessionCloseFlowParams) {
   const [showCloseSessionModal, setShowCloseSessionModal] = useState(false);
+  const [closeMode, setCloseMode] = useState<SessionCloseMode>("logout");
   const [loadingCloseData, setLoadingCloseData] = useState(false);
   const [closingSession, setClosingSession] = useState(false);
   const [closeError, setCloseError] = useState("");
@@ -72,11 +75,21 @@ export function useSessionCloseFlow({
     setCloseError("");
     setVentasCaja([]);
     setGastosDia([]);
+    setCloseMode("logout");
   };
 
   const completeLogout = async () => {
     await apiLogout();
     window.location.href = "/login";
+  };
+
+  const finishAndQuitApp = async () => {
+    try {
+      await apiLogout();
+    } catch {
+      // ignore
+    }
+    window.smarttable?.confirmQuit();
   };
 
   const loadCloseSessionData = async () => {
@@ -97,14 +110,29 @@ export function useSessionCloseFlow({
     }
   };
 
+  const openCloseModal = async (mode: SessionCloseMode) => {
+    setCloseMode(mode);
+    setShowCloseSessionModal(true);
+    await loadCloseSessionData();
+  };
+
   const handleLogout = async () => {
     if (canManageCaja && cajaAbierta && cajaId) {
-      setShowCloseSessionModal(true);
-      await loadCloseSessionData();
+      await openCloseModal("logout");
       return;
     }
 
     await completeLogout();
+  };
+
+  /** Intercepta cierre de la app de escritorio. */
+  const handleAppCloseRequest = async () => {
+    if (canManageCaja && cajaAbierta && cajaId) {
+      await openCloseModal("quit");
+      return;
+    }
+    // Sin caja abierta: salir dejando la sesión para reanudar al volver
+    window.smarttable?.confirmQuit();
   };
 
   const handleAddExtraGasto = () => {
@@ -127,6 +155,17 @@ export function useSessionCloseFlow({
     if (closingSession) return;
     setShowCloseSessionModal(false);
     resetCloseSessionModal();
+    if (closeMode === "quit") {
+      window.smarttable?.cancelQuit();
+    }
+  };
+
+  /** Sale de la app dejando caja/sesión abiertas (para reanudar después). */
+  const handleQuitLeavingCajaOpen = () => {
+    if (closingSession) return;
+    setShowCloseSessionModal(false);
+    resetCloseSessionModal();
+    window.smarttable?.confirmQuit();
   };
 
   const handleConfirmCloseSession = async () => {
@@ -150,6 +189,12 @@ export function useSessionCloseFlow({
       );
       await cerrarCaja(caja.id as string);
       setCajaFromResponse(null);
+
+      if (closeMode === "quit") {
+        await finishAndQuitApp();
+        return;
+      }
+
       await completeLogout();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "No se pudo cerrar caja y sesión";
@@ -161,6 +206,7 @@ export function useSessionCloseFlow({
 
   return {
     showCloseSessionModal,
+    closeMode,
     loadingCloseData,
     closingSession,
     closeError,
@@ -172,8 +218,10 @@ export function useSessionCloseFlow({
     extraGastos,
     resumenCierre,
     handleLogout,
+    handleAppCloseRequest,
     handleAddExtraGasto,
     handleCancelCloseSession,
+    handleQuitLeavingCajaOpen,
     handleConfirmCloseSession,
     setExtraDesc,
     setExtraMonto,
