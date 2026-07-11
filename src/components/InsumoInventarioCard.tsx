@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { formatLocalDate } from "../lib/dateTime";
 import { fmt } from "../lib/formatMoney";
 import {
   fetchComprasInsumo,
@@ -47,9 +48,11 @@ const I = {
 type ModoStock = "agregar" | "fijar" | null;
 
 function formatFecha(iso: string) {
-  const d = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z");
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("es-CO");
+  return formatLocalDate(iso, {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  });
 }
 
 interface Props {

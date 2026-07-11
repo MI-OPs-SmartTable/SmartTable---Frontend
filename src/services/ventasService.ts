@@ -1,5 +1,16 @@
 import { apiClient } from "../lib/apiClient";
 
+export type VentaItemApi = {
+  id: string;
+  variante_id: string;
+  cantidad: number;
+  precio_unitario: number;
+  estado?: string;
+  variante_nombre?: string;
+  producto_nombre?: string;
+  subtotal?: number;
+};
+
 export type VentaApi = {
   id: string;
   pedido_id: string;
@@ -9,6 +20,10 @@ export type VentaApi = {
   monto_transferencia: number;
   metodo_pago: string;
   pagado_at: string;
+  mesa_id?: string | null;
+  mesa_nombre?: string | null;
+  ubicacion_nombre?: string | null;
+  items?: VentaItemApi[];
 };
 
 export type PedidoApi = {
@@ -29,6 +44,10 @@ export type PedidoApi = {
 
 export async function fetchVentas(): Promise<VentaApi[]> {
   return apiClient.get<VentaApi[]>("/ventas");
+}
+
+export async function fetchVentasPorCaja(cajaId: string): Promise<VentaApi[]> {
+  return apiClient.get<VentaApi[]>(`/ventas/caja/${cajaId}`);
 }
 
 export async function fetchPedido(id: string): Promise<PedidoApi> {
@@ -56,4 +75,29 @@ export function totalPedido(pedido: PedidoApi): number {
     (sum, item) => sum + Number(item.cantidad) * Number(item.precio_unitario),
     0
   );
+}
+
+export function labelMetodoPago(metodo: string): string {
+  if (metodo === "efectivo") return "Efectivo";
+  if (metodo === "transferencia") return "Transferencia";
+  if (metodo === "mixto") return "Mixto";
+  return metodo || "Pago";
+}
+
+export function labelUbicacionVenta(venta: VentaApi): string {
+  const mesa = venta.mesa_nombre?.trim();
+  const ubicacion = venta.ubicacion_nombre?.trim();
+  if (mesa && ubicacion) return `${mesa} · ${ubicacion}`;
+  if (mesa) return mesa;
+  if (ubicacion) return ubicacion;
+  return "Sin mesa";
+}
+
+export function labelProductoVenta(item: VentaItemApi): string {
+  const producto = item.producto_nombre?.trim();
+  const variante = item.variante_nombre?.trim();
+  if (producto && variante && producto.toLowerCase() !== variante.toLowerCase()) {
+    return `${producto} · ${variante}`;
+  }
+  return producto || variante || "Producto";
 }
