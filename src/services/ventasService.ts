@@ -11,6 +11,18 @@ export type VentaItemApi = {
   subtotal?: number;
 };
 
+export type PedidoItemPayload = {
+  variante_id: string;
+  cantidad: number;
+  nota?: string | null;
+};
+
+export type PedidoItemApi = PedidoItemPayload & {
+  id: string;
+  precio_unitario: number;
+  variante_nombre?: string;
+};
+
 export type VentaApi = {
   id: string;
   pedido_id: string;
@@ -33,13 +45,7 @@ export type PedidoApi = {
   caja_id: string;
   estado: string;
   created_at?: string;
-  items?: {
-    id: string;
-    variante_id: string;
-    cantidad: number;
-    precio_unitario: number;
-    variante_nombre?: string;
-  }[];
+  items?: PedidoItemApi[];
 };
 
 export async function fetchVentas(): Promise<VentaApi[]> {
