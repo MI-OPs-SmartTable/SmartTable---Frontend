@@ -1,4 +1,5 @@
 import { getCategoriaUi } from "../lib/categoriaUi";
+import { parseLocalDateTime } from "../lib/dateTime";
 import { fetchCategorias } from "./productosService";
 import { fetchInsumosStockBajo, type InsumoStockBajo } from "./insumosService";
 import type { CatalogoItem } from "../lib/mappers/productoMapper";
@@ -21,11 +22,6 @@ function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
   return x;
-}
-
-function parseDate(value: string): Date {
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  return new Date(normalized);
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -55,7 +51,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const catNombreById = new Map(categorias.map((c) => [c.id, c.nombre]));
 
   const hoy = startOfDay(new Date());
-  const ventasHoyList = ventas.filter((v) => isSameDay(parseDate(v.pagado_at), hoy));
+  const ventasHoyList = ventas.filter((v) =>
+    isSameDay(parseLocalDateTime(v.pagado_at), hoy)
+  );
 
   const ventasHoy = ventasHoyList.reduce((s, v) => s + Number(v.total), 0);
   const efectivoHoy = ventasHoyList.reduce((s, v) => s + Number(v.monto_efectivo), 0);
@@ -66,7 +64,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const day = new Date(hoy);
     day.setDate(day.getDate() - i);
     const total = ventas
-      .filter((v) => isSameDay(parseDate(v.pagado_at), day))
+      .filter((v) => isSameDay(parseLocalDateTime(v.pagado_at), day))
       .reduce((s, v) => s + Number(v.total), 0);
     barrasRaw.push({ label: DAY_LABELS[day.getDay()], total });
   }
@@ -83,7 +81,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const productoCounts = new Map<string, number>();
 
   const recentVentas = [...ventas]
-    .sort((a, b) => parseDate(b.pagado_at).getTime() - parseDate(a.pagado_at).getTime())
+    .sort((a, b) => parseLocalDateTime(b.pagado_at).getTime() - parseLocalDateTime(a.pagado_at).getTime())
     .slice(0, 30);
 
   await Promise.all(
@@ -124,13 +122,13 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     .slice(0, 5);
 
   const ultimasVentas = ventas
-    .sort((a, b) => parseDate(b.pagado_at).getTime() - parseDate(a.pagado_at).getTime())
+    .sort((a, b) => parseLocalDateTime(b.pagado_at).getTime() - parseLocalDateTime(a.pagado_at).getTime())
     .slice(0, 5)
     .map((v: VentaApi) => ({
       id: v.id,
       total: Number(v.total),
       metodo: v.metodo_pago,
-      hora: parseDate(v.pagado_at).toLocaleTimeString("es-CO", {
+      hora: parseLocalDateTime(v.pagado_at).toLocaleTimeString("es-CO", {
         hour: "2-digit",
         minute: "2-digit",
       }),

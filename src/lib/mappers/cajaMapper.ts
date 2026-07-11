@@ -1,5 +1,6 @@
 import type { CierreCaja, GastoCierreItem } from "../../pages/dashboard/types/caja.types";
 import type { VentaApi } from "../../services/ventasService";
+import { parseLocalDateTime } from "../dateTime";
 
 type ApiCaja = {
   id: string;
@@ -13,19 +14,16 @@ type ApiCaja = {
 
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
-function parseSqliteDate(value: string): Date {
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const d = new Date(normalized);
-  return Number.isNaN(d.getTime()) ? new Date() : d;
-}
-
 export function mapCajaHistorialItem(
   caja: ApiCaja,
   usuarioNombre: string,
   ventasCaja: VentaApi[],
   gastosCaja: GastoCierreItem[] = []
 ): CierreCaja {
-  const cierreAt = caja.cierre_at ? parseSqliteDate(caja.cierre_at) : parseSqliteDate(caja.apertura_at);
+  const cierreAt = caja.cierre_at
+    ? parseLocalDateTime(caja.cierre_at)
+    : parseLocalDateTime(caja.apertura_at);
+
   const fecha = cierreAt.toLocaleDateString("es-CO", {
     day: "numeric",
     month: "long",
@@ -46,10 +44,14 @@ export function mapCajaHistorialItem(
   );
   const totalGastos = gastosCaja.reduce((sum, g) => sum + Number(g.monto), 0);
 
+  const y = cierreAt.getFullYear();
+  const m = String(cierreAt.getMonth() + 1).padStart(2, "0");
+  const d = String(cierreAt.getDate()).padStart(2, "0");
+
   return {
     id: caja.id,
     fecha,
-    fechaRaw: cierreAt.toISOString().split("T")[0],
+    fechaRaw: `${y}-${m}-${d}`,
     diaSemana: DIAS[cierreAt.getDay()],
     cerradoPor: usuarioNombre,
     hora,

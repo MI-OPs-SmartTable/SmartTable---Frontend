@@ -9,6 +9,7 @@ import CierreCajaModal, {
 } from "../../components/CierreCajaModal";
 import { usePosSession } from "../../context/PosSessionContext";
 import { mapCajaHistorialItem } from "../../lib/mappers/cajaMapper";
+import { parseLocalDateTime } from "../../lib/dateTime";
 import {
   abrirCaja,
   cerrarCaja,
@@ -65,8 +66,8 @@ export default function Caja() {
       const cerradas = cajas
         .filter((item) => item.estado === "cerrada")
         .sort((a, b) => {
-          const dateA = new Date(a.cierre_at ?? a.apertura_at).getTime();
-          const dateB = new Date(b.cierre_at ?? b.apertura_at).getTime();
+          const dateA = parseLocalDateTime(a.cierre_at ?? a.apertura_at).getTime();
+          const dateB = parseLocalDateTime(b.cierre_at ?? b.apertura_at).getTime();
           return dateB - dateA;
         });
 
