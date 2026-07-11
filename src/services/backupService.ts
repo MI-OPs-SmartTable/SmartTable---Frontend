@@ -19,14 +19,16 @@ export async function fetchBackupCredentialsStatus(): Promise<BackupCredentialsS
   return apiClient.get<BackupCredentialsStatus>("/backup/credentials/status");
 }
 
-export async function uploadBackupCredentials(
-  credentials: Record<string, unknown>
-): Promise<BackupCredentialsStatus> {
-  return apiClient.post<BackupCredentialsStatus>("/backup/credentials", credentials);
-}
-
 export async function deleteBackupCredentials(): Promise<BackupCredentialsStatus> {
   return apiClient.delete<BackupCredentialsStatus>("/backup/credentials");
+}
+
+export async function startBackupOAuth(): Promise<{
+  authUrl: string;
+  redirectUri: string;
+  state: string;
+}> {
+  return apiClient.post("/backup/oauth/start");
 }
 
 export async function runBackupNow(): Promise<{

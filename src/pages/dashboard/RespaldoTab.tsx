@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
-import type { BackupConfig } from "./types/backup.types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { BackupConfig, BackupCredentialsType } from "./types/backup.types";
 import {
   deleteBackupCredentials,
   fetchBackupConfig,
+  fetchBackupCredentialsStatus,
   runBackupNow,
+  startBackupOAuth,
   updateBackupConfig,
-  uploadBackupCredentials,
 } from "../../services/backupService";
 
 const ORANGE = "#F97316";
@@ -96,13 +97,79 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
+const stepListStyle: React.CSSProperties = {
+  margin: 0,
+  paddingLeft: 18,
+  fontSize: 13,
+  color: "#4b5563",
+  lineHeight: 1.65,
+  display: "grid",
+  gap: 6,
+};
+
+function DriveInstructionsModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="cfg-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="cfg-modal" style={{ maxWidth: 520 }} role="dialog" aria-modal="true" aria-labelledby="drive-help-title">
+        <div className="cfg-modal-header">
+          <div className="cfg-modal-title" id="drive-help-title">Cómo configurar Google Drive</div>
+          <button type="button" className="cfg-modal-close" onClick={onClose} aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+
+        <div className="cfg-modal-body" style={{ display: "grid", gap: 18, paddingBottom: 8 }}>
+          <p style={{ margin: 0, fontSize: 13, color: "#4b5563", lineHeight: 1.55 }}>
+            Sigue estos pasos para subir los respaldos a la carpeta de Google Drive que te compartieron.
+          </p>
+
+          <ol style={stepListStyle}>
+            <li>
+              Pulsa <strong>Conectar con Google</strong> e inicia sesión con el Gmail al que te
+              compartieron la carpeta de respaldo.
+            </li>
+            <li>
+              Si Google muestra que la app no está verificada, elige{" "}
+              <strong>Avanzado → Ir a SmartTable (no seguro)</strong> y acepta.
+            </li>
+            <li>
+              Pide el <strong>ID de carpeta</strong> a quien te instaló SmartTable y pégalo en el campo.
+            </li>
+            <li>
+              Activa <strong>Subir respaldo a Google Drive</strong> y pulsa{" "}
+              <strong>Guardar configuración</strong>.
+            </li>
+          </ol>
+
+          <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
+            Si algo falla al conectar o al guardar, contacta a quien te instaló la app.
+          </p>
+        </div>
+
+        <div className="cfg-modal-footer">
+          <button
+            type="button"
+            className="cfg-btn-save"
+            onClick={onClose}
+            style={{ flex: "0 0 auto", minWidth: 140, marginLeft: "auto" }}
+          >
+            Entendido
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function RespaldoTab() {
   const [config, setConfig] = useState<BackupConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [connectingOAuth, setConnectingOAuth] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showInstructions, setShowInstructions] = useState(false);
 
   const [backupEnabled, setBackupEnabled] = useState(true);
   const [intervalMinutes, setIntervalMinutes] = useState(5);
@@ -110,6 +177,43 @@ export default function RespaldoTab() {
   const [googleDriveFolderId, setGoogleDriveFolderId] = useState("");
   const [credentialsEmail, setCredentialsEmail] = useState<string | null>(null);
   const [credentialsConfigured, setCredentialsConfigured] = useState(false);
+  const [oauthPending, setOauthPending] = useState(false);
+  const [oauthClientConfigured, setOauthClientConfigured] = useState(false);
+  const oauthPollRef = useRef<number | null>(null);
+
+  const applyCredentialsState = (data: {
+    credentialsConfigured?: boolean;
+    configured?: boolean;
+    credentialsEmail: string | null;
+    credentialsType?: BackupCredentialsType;
+    oauthPending?: boolean;
+    oauthClientConfigured?: boolean;
+  }) => {
+    setCredentialsConfigured(Boolean(data.credentialsConfigured ?? data.configured));
+    setCredentialsEmail(data.credentialsEmail);
+    setOauthPending(Boolean(data.oauthPending));
+    setOauthClientConfigured(Boolean(data.oauthClientConfigured));
+  };
+
+  const applyFormFromConfig = (data: BackupConfig) => {
+    setBackupEnabled(data.backupEnabled);
+    setIntervalMinutes(data.intervalMinutes);
+    applyCredentialsState(data);
+    if (data.credentialsConfigured) {
+      setGoogleDriveEnabled(data.googleDriveEnabled);
+      setGoogleDriveFolderId(data.googleDriveFolderId);
+    } else {
+      setGoogleDriveEnabled(false);
+      setGoogleDriveFolderId("");
+    }
+  };
+
+  const stopOAuthPoll = () => {
+    if (oauthPollRef.current !== null) {
+      window.clearInterval(oauthPollRef.current);
+      oauthPollRef.current = null;
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,12 +221,7 @@ export default function RespaldoTab() {
     try {
       const data = await fetchBackupConfig();
       setConfig(data);
-      setBackupEnabled(data.backupEnabled);
-      setIntervalMinutes(data.intervalMinutes);
-      setGoogleDriveEnabled(data.googleDriveEnabled);
-      setGoogleDriveFolderId(data.googleDriveFolderId);
-      setCredentialsEmail(data.credentialsEmail);
-      setCredentialsConfigured(data.credentialsConfigured);
+      applyFormFromConfig(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo cargar la configuración");
     } finally {
@@ -132,9 +231,23 @@ export default function RespaldoTab() {
 
   useEffect(() => {
     load();
+    return () => stopOAuthPoll();
   }, [load]);
 
+  const isDirty = Boolean(
+    config &&
+      (backupEnabled !== config.backupEnabled ||
+        intervalMinutes !== config.intervalMinutes ||
+        googleDriveEnabled !== config.googleDriveEnabled ||
+        googleDriveFolderId.trim() !== (config.googleDriveFolderId || "").trim())
+  );
+
   const handleSave = async () => {
+    if (googleDriveEnabled && (!credentialsConfigured || !googleDriveFolderId.trim())) {
+      setError("Para activar Google Drive conecta una cuenta y pega el ID de carpeta.");
+      return;
+    }
+
     setSaving(true);
     setError("");
     setSuccess("");
@@ -142,13 +255,16 @@ export default function RespaldoTab() {
       const updated = await updateBackupConfig({
         backupEnabled,
         intervalMinutes,
-        googleDriveEnabled,
-        googleDriveFolderId,
+        googleDriveEnabled: credentialsConfigured ? googleDriveEnabled : false,
+        googleDriveFolderId: credentialsConfigured ? googleDriveFolderId.trim() : "",
       });
       setConfig(updated);
-      setCredentialsEmail(updated.credentialsEmail);
-      setCredentialsConfigured(updated.credentialsConfigured);
-      setSuccess("Configuración guardada correctamente");
+      applyFormFromConfig(updated);
+      setSuccess(
+        updated.googleDriveEnabled
+          ? "Configuración guardada. Google Drive quedó activo."
+          : "Configuración guardada correctamente"
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo guardar");
     } finally {
@@ -156,50 +272,99 @@ export default function RespaldoTab() {
     }
   };
 
-  const handleCredentialsFile = async (file: File | null) => {
-    if (!file) return;
-
+  const handleConnectGoogle = async () => {
     setError("");
     setSuccess("");
+    setConnectingOAuth(true);
     try {
-      const text = await file.text();
-      const credentials = JSON.parse(text);
-      const result = await uploadBackupCredentials(credentials);
-      setCredentialsConfigured(result.configured);
-      setCredentialsEmail(result.credentialsEmail);
-      setSuccess("Credenciales de Google guardadas");
-      await load();
+      const { authUrl } = await startBackupOAuth();
+      window.open(authUrl, "_blank", "noopener,noreferrer");
+      setSuccess("Se abrió Google para autorizar. Completa el inicio de sesión y vuelve a esta ventana.");
+
+      stopOAuthPoll();
+      let attempts = 0;
+      oauthPollRef.current = window.setInterval(() => {
+        attempts += 1;
+        void (async () => {
+          try {
+            const status = await fetchBackupCredentialsStatus();
+            if (status.configured && status.credentialsType === "oauth") {
+              stopOAuthPoll();
+              applyCredentialsState(status);
+              setConnectingOAuth(false);
+              setSuccess(
+                `Cuenta conectada${status.credentialsEmail ? `: ${status.credentialsEmail}` : ""}. Ahora pega el ID de carpeta, activa Drive y guarda.`
+              );
+            } else if (attempts >= 60) {
+              stopOAuthPoll();
+              setConnectingOAuth(false);
+              setError("No se detectó la autorización. Vuelve a pulsar “Conectar con Google”.");
+            }
+          } catch {
+            // Seguir intentando mientras el usuario autoriza
+          }
+        })();
+      }, 2000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Archivo de credenciales inválido");
+      setConnectingOAuth(false);
+      const raw = e instanceof Error ? e.message : "No se pudo iniciar la conexión con Google";
+      const isProviderConfig =
+        /GOOGLE_OAUTH_CLIENT|cliente OAuth de SmartTable|Falta el cliente OAuth/i.test(raw);
+      setError(
+        isProviderConfig
+          ? "Google Drive aún no está disponible en esta instalación. Contacta a quien te instaló SmartTable."
+          : raw
+      );
     }
   };
 
-  const handleRemoveCredentials = async () => {
+  const handleDisconnectGoogle = async () => {
     setError("");
     setSuccess("");
+    stopOAuthPoll();
+    setConnectingOAuth(false);
     try {
-      await deleteBackupCredentials();
-      setCredentialsConfigured(false);
-      setCredentialsEmail(null);
+      const result = await deleteBackupCredentials();
+      applyCredentialsState(result);
       setGoogleDriveEnabled(false);
-      setSuccess("Credenciales eliminadas");
-      await load();
+      setGoogleDriveFolderId("");
+      const updated = await updateBackupConfig({
+        googleDriveEnabled: false,
+        googleDriveFolderId: "",
+      });
+      setConfig(updated);
+      applyCredentialsState(updated);
+      setGoogleDriveFolderId(updated.googleDriveFolderId || "");
+      setGoogleDriveEnabled(updated.googleDriveEnabled);
+      setSuccess("Cuenta de Google desconectada y permiso revocado en Google. Se limpió el ID de carpeta.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudieron eliminar las credenciales");
+      setError(e instanceof Error ? e.message : "No se pudo desconectar Google");
     }
   };
 
   const handleRunNow = async () => {
+    if (isDirty) {
+      setError("Guarda la configuración antes de ejecutar el respaldo (botón Guardar configuración).");
+      return;
+    }
+
     setRunning(true);
     setError("");
     setSuccess("");
     try {
       const result = await runBackupNow();
       setConfig(result.config);
+      applyCredentialsState(result.config);
       setSuccess(`Respaldo ejecutado: ${result.fileName} (${formatBytes(result.sizeBytes)})`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo ejecutar el respaldo");
-      await load();
+      try {
+        const data = await fetchBackupConfig();
+        setConfig(data);
+        applyCredentialsState(data);
+      } catch {
+        // Mantener el formulario local si falla la recarga de estado
+      }
     } finally {
       setRunning(false);
     }
@@ -213,10 +378,22 @@ export default function RespaldoTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 720 }}>
       <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "14px 16px" }}>
         <p style={{ margin: 0, fontSize: 13, color: "#9a3412", lineHeight: 1.5 }}>
-          Configura aquí el respaldo automático de la base de datos. La copia local se guarda junto a los datos de la app
-          y, si activas Google Drive, se sube el mismo archivo cada intervalo.
+          1) <strong>Conectar con Google</strong>, 2) pega el <strong>ID de carpeta</strong> que te compartieron,
+          3) activa Drive y 4) <strong>Guardar configuración</strong>.
         </p>
       </div>
+
+      {isDirty && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", borderRadius: 10, padding: "12px 14px", fontSize: 13 }}>
+          Tienes cambios sin guardar. Pulsa <strong>Guardar configuración</strong> para aplicar el switch, el intervalo y el ID de carpeta.
+        </div>
+      )}
+
+      {!oauthClientConfigured && (
+        <div style={{ background: "#fffbeb", border: "1px solid #fcd34d", color: "#92400e", borderRadius: 10, padding: "12px 14px", fontSize: 13 }}>
+          Google Drive aún no está disponible en esta instalación. Contacta a quien te instaló SmartTable para activarlo.
+        </div>
+      )}
 
       {error && (
         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", borderRadius: 10, padding: "12px 14px", fontSize: 13 }}>
@@ -246,49 +423,108 @@ export default function RespaldoTab() {
       </section>
 
       <section style={{ borderTop: "1px solid #f3f4f6", paddingTop: 20, display: "grid", gap: 18 }}>
-        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#111827" }}>Google Drive</h3>
-
-        <Toggle checked={googleDriveEnabled} onChange={setGoogleDriveEnabled} label="Subir respaldo a Google Drive" />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#111827" }}>Google Drive</h3>
+          <button
+            type="button"
+            onClick={() => setShowInstructions(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "7px 14px",
+              borderRadius: 999,
+              border: "1.5px solid #fdba74",
+              background: "#fff7ed",
+              color: "#9a3412",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1 }}>?</span>
+            Cómo configurar
+          </button>
+        </div>
 
         <Field
-          label="ID de carpeta en Drive"
-          hint="Cópialo de la URL de la carpeta: drive.google.com/drive/folders/ESTE_ID"
+          label="Cuenta de Google"
+          hint="Primero autoriza con el Gmail al que te compartieron la carpeta de respaldo."
         >
-          <input
-            value={googleDriveFolderId}
-            onChange={(e) => setGoogleDriveFolderId(e.target.value)}
-            placeholder="1AbCdEfGhIjKlMnOpQrStUvWxYz"
-            style={inputStyle}
-          />
-        </Field>
-
-        <Field
-          label="Credenciales (JSON de cuenta de servicio)"
-          hint="Descárgalas desde Google Cloud Console. Comparte la carpeta de Drive con el email de la cuenta."
-        >
-          <input
-            type="file"
-            accept="application/json,.json"
-            onChange={(e) => handleCredentialsFile(e.target.files?.[0] || null)}
-            style={{ fontSize: 13 }}
-          />
           {credentialsConfigured ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: 13, color: "#047857" }}>
-                Configurado: {credentialsEmail}
+                Conectado: {credentialsEmail}
               </span>
               <button
                 type="button"
-                onClick={handleRemoveCredentials}
+                onClick={handleDisconnectGoogle}
                 style={{ border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: 13 }}
               >
-                Eliminar
+                Desconectar
               </button>
             </div>
           ) : (
-            <span style={{ fontSize: 13, color: "#9ca3af" }}>Sin credenciales cargadas</span>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <button
+                type="button"
+                onClick={handleConnectGoogle}
+                disabled={connectingOAuth || !oauthClientConfigured}
+                style={{
+                  padding: "9px 16px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: connectingOAuth || !oauthClientConfigured ? "#fdba74" : ORANGE,
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: connectingOAuth || !oauthClientConfigured ? "default" : "pointer",
+                  fontSize: 13,
+                }}
+              >
+                {connectingOAuth ? "Esperando autorización..." : "Conectar con Google"}
+              </button>
+              {oauthPending && oauthClientConfigured && (
+                <span style={{ fontSize: 13, color: "#6b7280" }}>Pendiente de autorizar</span>
+              )}
+            </div>
           )}
         </Field>
+
+        <Field
+          label="ID de carpeta en Drive"
+          hint={
+            credentialsConfigured
+              ? "Pídelo a quien te instaló la app (está en la URL de la carpeta compartida)."
+              : "Conecta una cuenta de Google para poder ingresar el ID de carpeta."
+          }
+        >
+          <input
+            value={credentialsConfigured ? googleDriveFolderId : ""}
+            onChange={(e) => setGoogleDriveFolderId(e.target.value)}
+            placeholder="1AbCdEfGhIjKlMnOpQrStUvWxYz"
+            disabled={!credentialsConfigured}
+            style={{
+              ...inputStyle,
+              background: credentialsConfigured ? "#fff" : "#f3f4f6",
+              color: credentialsConfigured ? "#111827" : "#9ca3af",
+              cursor: credentialsConfigured ? "text" : "not-allowed",
+            }}
+          />
+        </Field>
+
+        <Toggle
+          checked={googleDriveEnabled}
+          onChange={(value) => {
+            if (!credentialsConfigured) return;
+            setGoogleDriveEnabled(value);
+          }}
+          label="Subir respaldo a Google Drive"
+        />
+        {!credentialsConfigured && (
+          <span style={{ fontSize: 12, color: "#6b7280", marginTop: -8 }}>
+            Conecta Google antes de activar la subida a Drive.
+          </span>
+        )}
       </section>
 
       <section style={{ borderTop: "1px solid #f3f4f6", paddingTop: 20, display: "grid", gap: 10 }}>
@@ -303,28 +539,30 @@ export default function RespaldoTab() {
         </div>
       </section>
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || !isDirty}
           style={{
             padding: "11px 22px",
             borderRadius: 999,
             border: "none",
-            background: saving ? "#fed7aa" : ORANGE,
+            background: saving || !isDirty ? "#fed7aa" : ORANGE,
             color: "#fff",
             fontWeight: 700,
-            cursor: saving ? "default" : "pointer",
+            cursor: saving || !isDirty ? "default" : "pointer",
+            boxShadow: isDirty ? "0 0 0 3px rgba(249, 115, 22, 0.25)" : "none",
           }}
         >
-          {saving ? "Guardando..." : "Guardar configuración"}
+          {saving ? "Guardando..." : isDirty ? "Guardar configuración" : "Sin cambios por guardar"}
         </button>
 
         <button
           type="button"
           onClick={handleRunNow}
-          disabled={running}
+          disabled={running || isDirty}
+          title={isDirty ? "Guarda primero la configuración" : undefined}
           style={{
             padding: "11px 22px",
             borderRadius: 999,
@@ -332,12 +570,15 @@ export default function RespaldoTab() {
             background: "#fff",
             color: ORANGE,
             fontWeight: 700,
-            cursor: running ? "default" : "pointer",
+            cursor: running || isDirty ? "default" : "pointer",
+            opacity: isDirty ? 0.55 : 1,
           }}
         >
           {running ? "Ejecutando..." : "Ejecutar respaldo ahora"}
         </button>
       </div>
+
+      {showInstructions && <DriveInstructionsModal onClose={() => setShowInstructions(false)} />}
     </div>
   );
 }

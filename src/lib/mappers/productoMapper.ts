@@ -12,6 +12,7 @@ type ApiProductoBase = {
   categoria_id: string;
   nombre: string;
   descripcion?: string | null;
+  emoji?: string | null;
   activo?: number | boolean;
   variante_id?: string;
   precio?: number;
@@ -36,8 +37,8 @@ export function mapInsumoFromApi(row: {
   return { id: row.id, nombre: row.nombre, unidad: row.unidad };
 }
 
-export function mapCategoriaFromApi(row: { id: string; nombre: string }): Categoria {
-  return enrichCategoria({ id: row.id, nombre: row.nombre });
+export function mapCategoriaFromApi(row: { id: string; nombre: string; emoji?: string | null }): Categoria {
+  return enrichCategoria({ id: row.id, nombre: row.nombre, emoji: row.emoji });
 }
 
 export function mapProductoFromApi(row: ApiProductoBase): Producto {
@@ -61,6 +62,7 @@ export function mapProductoFromApi(row: ApiProductoBase): Producto {
     categoriaId: row.categoria_id,
     activo,
     insumos,
+    emoji: row.emoji || "📦",
     varianteId: row.variante_id,
   } as Producto & { varianteId?: string };
 }
@@ -73,6 +75,7 @@ export function mapProductoToCreateApi(
     nombre: producto.nombre,
     descripcion: producto.descripcion,
     precio: producto.precio,
+    emoji: producto.emoji || "📦",
     insumos: producto.insumos.map((i) => ({
       insumo_id: i.insumoId,
       cantidad: i.cantidad,
@@ -85,6 +88,15 @@ export function mapProductoToUpdateApi(producto: Partial<Producto>): Record<stri
   if (producto.categoriaId !== undefined) body.categoria_id = producto.categoriaId;
   if (producto.nombre !== undefined) body.nombre = producto.nombre;
   if (producto.descripcion !== undefined) body.descripcion = producto.descripcion;
+  if (producto.precio !== undefined) body.precio = producto.precio;
+  if (producto.activo !== undefined) body.activo = producto.activo;
+  if (producto.emoji !== undefined) body.emoji = producto.emoji;
+  if (producto.insumos !== undefined) {
+    body.insumos = producto.insumos.map((i) => ({
+      insumo_id: i.insumoId,
+      cantidad: i.cantidad,
+    }));
+  }
   return body;
 }
 
