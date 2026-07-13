@@ -163,4 +163,27 @@ export const apiClient = {
     }
     return parseResponse<T>(response);
   },
+  /** Sube un archivo como multipart/form-data (p. ej. importación de Excel). */
+  postFormData: async <T>(
+    path: string,
+    formData: FormData,
+    options: { auth?: boolean } = {}
+  ): Promise<T> => {
+    const { auth = true } = options;
+    const headers: Record<string, string> = {};
+    // Sin Content-Type manual: el navegador fija el boundary del multipart.
+    if (auth) {
+      const token = getToken();
+      if (!token) {
+        throw new ApiError("Sesión no iniciada", 401);
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const url = `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+    const response = await fetch(url, { method: "POST", headers, body: formData });
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    return parseResponse<T>(response);
+  },
 };

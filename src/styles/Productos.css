@@ -409,12 +409,24 @@
   gap: 4px;
 }
 
+.pr-insumos-search-wrap {
+  max-width: none;
+  margin-bottom: 8px;
+}
+
 .pr-insumos-list {
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
   max-height: 240px;
   overflow-y: auto;
+}
+
+.pr-insumos-empty {
+  padding: 16px 14px;
+  font-size: 13px;
+  color: var(--ash);
+  text-align: center;
 }
 
 .pr-insumo-row {

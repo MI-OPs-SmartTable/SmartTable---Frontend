@@ -15,6 +15,7 @@ import "../../styles/Configuracion.css";
 import RestauranteTab from "./RestauranteTab";
 import EntidadesBancariasTab from "./EntidadesBancariasTab";
 import RespaldoTab from "./RespaldoTab";
+import ImportarExcelTab from "./ImportarExcelTab";
 
 
 const I = {
@@ -78,6 +79,13 @@ const I = {
       <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" />
     </svg>
   ),
+  upload: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
+  ),
 };
 
 
@@ -91,7 +99,7 @@ export default function Configuracion() {
   const [deleteTarget, setDeleteTarget] = useState<Usuario | null>(null);
 
   // Estado de tabs
-  const [activeTab, setActiveTab] = useState<"usuarios" | "restaurante" | "bancarias" | "respaldo">("usuarios");
+  const [activeTab, setActiveTab] = useState<"usuarios" | "restaurante" | "bancarias" | "respaldo" | "importar">("usuarios");
 
   // Cargar usuarios desde BD
   useEffect(() => {
@@ -148,6 +156,8 @@ export default function Configuracion() {
         return <EntidadesBancariasTab />;
       case "respaldo":
         return <RespaldoTab />;
+      case "importar":
+        return <ImportarExcelTab />;
       default:
         return null;
     }
@@ -253,7 +263,7 @@ export default function Configuracion() {
   return (
     <div className="cfg-root">
       <h1 className="cfg-title">Configuración</h1>
-      <p className="cfg-sub">Gestiona usuarios, restaurante, entidades bancarias y respaldos</p>
+      <p className="cfg-sub">Gestiona usuarios, restaurante, entidades bancarias, respaldos e importación de datos</p>
 
       {/* Tabs */}
       <div className="cfg-tabs">
@@ -284,6 +294,13 @@ export default function Configuracion() {
         >
           <span className="cfg-tab-icon">{I.cloud}</span>
           Respaldo
+        </button>
+        <button
+          className={`cfg-tab ${activeTab === "importar" ? "active" : ""}`}
+          onClick={() => setActiveTab("importar")}
+        >
+          <span className="cfg-tab-icon">{I.upload}</span>
+          Importar Excel
         </button>
       </div>
 
