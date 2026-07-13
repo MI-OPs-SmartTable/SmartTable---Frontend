@@ -82,7 +82,7 @@ export default function InsumoModal({ editTarget, proveedores, onClose, onSave }
   };
 
   return (
-    <div className="pr-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="pr-overlay">
       <div className="pr-modal">
         <div className="pr-modal-header">
           <div className="pr-modal-title">{isEdit ? "Editar Insumo" : "Nuevo Insumo"}</div>

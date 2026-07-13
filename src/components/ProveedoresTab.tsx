@@ -139,7 +139,7 @@ function ProveedorModal({
   };
 
   return (
-    <div className="pr-overlay" onClick={(e) => e.target === e.currentTarget && onCerrar()}>
+    <div className="pr-overlay">
       <div className="pr-modal">
         <div className="pr-modal-header">
           <div className="pr-modal-title">{editTarget ? "Editar Proveedor" : "Nuevo Proveedor"}</div>

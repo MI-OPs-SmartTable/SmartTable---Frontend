@@ -75,7 +75,7 @@ export default function PaymentModal({
   const resumenItems = pedidoItems ?? [];
 
   return (
-    <div className="caja-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="caja-modal-overlay">
       <div className="caja-modal ventas-pago-modal">
         <div className="caja-modal-header">
           <div className="caja-modal-title">Cobrar pedido</div>

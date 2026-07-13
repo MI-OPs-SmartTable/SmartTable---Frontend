@@ -121,7 +121,7 @@ export default function CrearEditarUsuario({ editTarget, usuarios, onClose, onSa
   };
 
   return (
-    <div className="cfg-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="cfg-overlay">
       <div className="cfg-modal">
         <div className="cfg-modal-header">
           <div className="cfg-modal-title">{isEdit ? "Editar usuario" : "Nuevo Usuario"}</div>

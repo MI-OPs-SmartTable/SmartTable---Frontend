@@ -101,7 +101,7 @@ function ForgotModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (v:
   };
 
   return (
-    <div className="pl-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="pl-overlay">
       <div className="pl-modal">
         {!done ? (
           <>

@@ -114,7 +114,7 @@ const stepListStyle: React.CSSProperties = {
 
 function DriveInstructionsModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="cfg-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="cfg-overlay">
       <div className="cfg-modal" style={{ maxWidth: 520 }} role="dialog" aria-modal="true" aria-labelledby="drive-help-title">
         <div className="cfg-modal-header">
           <div className="cfg-modal-title" id="drive-help-title">Cómo configurar Google Drive</div>
