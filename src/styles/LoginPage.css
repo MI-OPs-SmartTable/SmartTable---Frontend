@@ -349,6 +349,74 @@ html, body { height: 100%; background: var(--cream); }
 
 .pl-forgot:hover { color: var(--orange); text-decoration: underline; }
 
+.pl-help-hint {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 20;
+}
+
+.pl-help-hint-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sun);
+  background: rgba(46, 31, 14, 0.92);
+  color: var(--sun);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  padding: 0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pl-help-hint-btn:hover,
+.pl-help-hint-btn:focus-visible {
+  background: var(--sun);
+  color: var(--bark);
+  outline: none;
+}
+
+.pl-help-hint-tooltip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  width: 260px;
+  padding: 12px 14px;
+  background: rgba(46, 31, 14, 0.96);
+  border: 1px solid rgba(242, 169, 59, 0.35);
+  border-radius: 10px;
+  color: var(--sand);
+  font-size: 12.5px;
+  line-height: 1.45;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  pointer-events: none;
+}
+
+.pl-help-hint:hover .pl-help-hint-tooltip,
+.pl-help-hint-btn:focus-visible + .pl-help-hint-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+@media (max-width: 760px) {
+  .pl-help-hint {
+    left: 16px;
+    bottom: 16px;
+  }
+
+  .pl-help-hint-tooltip {
+    width: min(260px, calc(100vw - 48px));
+  }
+}
+
 .pl-session-info {
   margin-top: 28px;
   padding-top: 20px;

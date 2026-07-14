@@ -259,13 +259,32 @@
   height: 100%;
 }
 
-.rp-stack-bars {
+.rp-stack-track {
+  position: relative;
   flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 8px;
+  box-sizing: border-box;
+}
+
+.rp-stack-track::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgba(46, 31, 14, 0.12);
+}
+
+.rp-stack-bars {
+  flex: 0 0 auto;
   width: 100%;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  margin-top: auto;
   border-radius: 6px 6px 0 0;
   overflow: hidden;
   min-height: 4px;

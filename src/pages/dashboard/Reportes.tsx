@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, TrendingUp, Calendar, Package, BarChart3 } from "lucide-react";
+import { Download, TrendingUp, Calendar, Package, BarChart3, MapPin } from "lucide-react";
 import { formatCOP } from "../../lib/formatMoney";
 import { getCategoriaUi } from "../../lib/categoriaUi";
 import {
@@ -7,9 +7,12 @@ import {
   fetchReporteDashboard,
   type ReporteDashboard,
 } from "../../services/reportesService";
+import { useAutoStartTour } from "../../tours/useAutoStartTour";
 import "../../styles/Reportes.css";
 
-type TabKey = "daily" | "products" | "categories";
+type TabKey = "daily" | "products" | "categories" | "locations";
+
+const UBICACION_COLORS = ["#E8601C", "#2D7A4F", "#D4A017", "#6B4423", "#2563EB", "#C0392B"];
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -44,9 +47,11 @@ const TABS: { key: TabKey; label: string; icon: typeof Calendar }[] = [
   { key: "daily", label: "Ventas por Día", icon: Calendar },
   { key: "products", label: "Por Producto", icon: Package },
   { key: "categories", label: "Por Categoría", icon: BarChart3 },
+  { key: "locations", label: "Por Ubicación", icon: MapPin },
 ];
 
 export default function Reportes() {
+  useAutoStartTour("reportes");
   const [desde, setDesde] = useState(() => daysAgoIso(30));
   const [hasta, setHasta] = useState(() => toLocalIsoDate(new Date()));
   const [quickDays, setQuickDays] = useState<number | null>(30);
@@ -127,6 +132,12 @@ export default function Reportes() {
       };
     });
   }, [data?.por_categoria]);
+
+  const ubicaciones = useMemo(() => {
+    const list = data?.por_ubicacion ?? [];
+    return list.map((u, i) => ({ ...u, color: UBICACION_COLORS[i % UBICACION_COLORS.length] }));
+  }, [data?.por_ubicacion]);
+  const maxUbicacionVentas = Math.max(...ubicaciones.map((u) => u.cantidad_ventas), 1);
 
   const donutGradient = useMemo(() => {
     if (categorias.length === 0) return "rgba(46,31,14,0.08)";
@@ -257,15 +268,17 @@ export default function Reportes() {
                           d.total > 0 ? (d.total_transferencia / d.total) * 100 : 0;
                         return (
                           <div key={d.fecha} className="rp-stack-col" title={formatCOP(d.total)}>
-                            <div className="rp-stack-bars" style={{ height: `${h}%`, flex: "none" }}>
-                              <div
-                                className="rp-stack-seg is-transfer"
-                                style={{ height: `${transferPct}%` }}
-                              />
-                              <div
-                                className="rp-stack-seg is-cash"
-                                style={{ height: `${cashPct}%` }}
-                              />
+                            <div className="rp-stack-track">
+                              <div className="rp-stack-bars" style={{ height: `${h}%` }}>
+                                <div
+                                  className="rp-stack-seg is-transfer"
+                                  style={{ height: `${transferPct}%` }}
+                                />
+                                <div
+                                  className="rp-stack-seg is-cash"
+                                  style={{ height: `${cashPct}%` }}
+                                />
+                              </div>
                             </div>
                             <span className="rp-stack-label">{formatDayLabel(d.fecha)}</span>
                           </div>
@@ -474,6 +487,46 @@ export default function Reportes() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {tab === "locations" && (
+            <div className="rp-card">
+              <h3 className="rp-card-title" style={{ marginBottom: 14 }}>
+                Ventas por Ubicación
+              </h3>
+              {ubicaciones.length === 0 ? (
+                <div className="rp-empty">Sin datos para el período seleccionado</div>
+              ) : (
+                <div className="rp-hbar-list">
+                  {ubicaciones.map((u) => (
+                    <div key={u.ubicacion_id ?? u.ubicacion} className="rp-hbar-row">
+                      <div style={{ minWidth: 0 }}>
+                        <div className="rp-hbar-meta">
+                          <span className="rp-hbar-name">
+                            <i
+                              className="rp-dot"
+                              style={{ background: u.color, display: "inline-block", verticalAlign: "middle" }}
+                            />{" "}
+                            {u.ubicacion}
+                          </span>
+                          <span className="rp-hbar-qty">{u.cantidad_ventas} ventas</span>
+                        </div>
+                        <div className="rp-hbar-track">
+                          <div
+                            className="rp-hbar-fill"
+                            style={{
+                              width: `${Math.round((u.cantidad_ventas / maxUbicacionVentas) * 100)}%`,
+                              background: u.color,
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <span className="rp-hbar-total">{formatCOP(u.total_vendido)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>

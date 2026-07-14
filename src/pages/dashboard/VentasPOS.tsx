@@ -23,6 +23,7 @@ import { mesasService } from "../../services/mesasService";
 import { fetchMediosPago, type MedioPagoApi } from "../../services/mediosPagoService";
 import PaymentModal, { type MetodoPago } from "../../components/PaymentModal";
 import { usePosRealtime } from "../../hooks/usePosRealtime";
+import { useAutoStartTour } from "../../tours/useAutoStartTour";
 import "../../styles/Dashboard.css";
 import "../../styles/Ventas.css";
 
@@ -58,6 +59,7 @@ function toPedidoItemPayload(item: CartItem): PedidoItemPayload {
 const MESA_POR_COBRAR_MSG = "La mesa ya tiene un pedido pendiente por cobrar";
 
 export default function VentasPOS() {
+  useAutoStartTour("ventas");
   const { usuario, cajaId, cajaAbierta, refreshCaja } = usePosSession();
   const [catalogo, setCatalogo] = useState<CatalogoItem[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);

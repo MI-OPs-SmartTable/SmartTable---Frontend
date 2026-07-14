@@ -21,6 +21,7 @@ import {
 import { fetchUsuarios } from "../../services/configService";
 import { fetchVentas } from "../../services/ventasService";
 import type { CierreCaja } from "./types/caja.types";
+import { useAutoStartTour } from "../../tours/useAutoStartTour";
 import "../../styles/Caja.css";
 
 const RESUMEN_VACIO: ResumenCierreCaja = {
@@ -33,6 +34,7 @@ const RESUMEN_VACIO: ResumenCierreCaja = {
 };
 
 export default function Caja() {
+  useAutoStartTour("caja");
   const {
     usuario,
     caja,

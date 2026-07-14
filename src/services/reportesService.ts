@@ -23,6 +23,13 @@ export type ReporteCategoria = {
   total_vendido: number;
 };
 
+export type ReporteUbicacion = {
+  ubicacion_id: string | null;
+  ubicacion: string;
+  cantidad_ventas: number;
+  total_vendido: number;
+};
+
 export type ReporteDashboard = {
   periodo: string;
   desde: string;
@@ -41,6 +48,7 @@ export type ReporteDashboard = {
   ingresos_netos: number;
   ventas_diarias: ReporteVentaDia[];
   por_categoria: ReporteCategoria[];
+  por_ubicacion: ReporteUbicacion[];
   top_productos: ReporteProducto[];
   stock_bajo: {
     cantidad: number;

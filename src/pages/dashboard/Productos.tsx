@@ -25,6 +25,7 @@ import InsumoInventarioCard from "../../components/InsumoInventarioCard";
 import DeleteConfirm from "../../components/DeleteConfirmProductos";
 import ProveedoresTab from "../../components/ProveedoresTab";
 import type { Proveedor } from "./types/proveedores.types";
+import { useAutoStartTour } from "../../tours/useAutoStartTour";
 import "../../styles/Productos.css";
 
 const I = {
@@ -42,6 +43,7 @@ const I = {
 type Tab = "productos" | "categorias" | "insumos" | "proveedores";
 
 export default function Productos() {
+  useAutoStartTour("productos");
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);

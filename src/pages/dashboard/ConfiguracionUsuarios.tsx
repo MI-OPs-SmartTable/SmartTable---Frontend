@@ -11,6 +11,7 @@ import {
 } from "../../services/configService";
 import UsuarioModal from "../../components/CrearEditarUsuario";
 import DeleteConfirm from "../../components/DeleteConfirmUsuario";
+import { useAutoStartTour } from "../../tours/useAutoStartTour";
 import "../../styles/Configuracion.css";
 import RestauranteTab from "./RestauranteTab";
 import EntidadesBancariasTab from "./EntidadesBancariasTab";
@@ -91,6 +92,7 @@ const I = {
 
 
 export default function Configuracion() {
+  useAutoStartTour("configuracion");
   // Estado de usuarios
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);

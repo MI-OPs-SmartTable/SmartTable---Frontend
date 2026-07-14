@@ -7,6 +7,7 @@ import DashboardSidebar from "../components/DashboardSidebar";
 import { useSessionCloseFlow } from "../hooks/useSessionCloseFlow";
 import { DASHBOARD_ICONS, DASHBOARD_NAV_ITEMS, getRolLabel } from "./dashboard.constants";
 import { saveLastDashboardPath } from "../lib/sessionResume";
+import { HelpMenu } from "../tours/HelpMenu";
 import "../styles/Dashboard.css";
 
 export default function DashboardLayout() {
@@ -128,6 +129,8 @@ export default function DashboardLayout() {
         )}
         <Outlet />
       </main>
+
+      <HelpMenu role={rol} />
 
       {closeFlow.showCloseSessionModal && (
         <SessionCloseModal

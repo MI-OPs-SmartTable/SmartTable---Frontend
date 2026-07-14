@@ -11,7 +11,6 @@ import { ApiError } from "../lib/apiClient";
 import { fetchUsuariosParaLogin } from "../services/authUsuariosService";
 import { mapAuthUsuarioToLoginOption } from "../lib/mappers/usuarioMapper";
 import { waitForBackendReady } from "../lib/waitForBackend";
-import { getResumePath } from "../lib/sessionResume";
 import RemoteAccessCard from "../components/RemoteAccessCard";
 import "../styles/LoginPage.css";
 
@@ -35,13 +34,20 @@ const IconEye = ({ open }: { open: boolean }) => open ? (
 );
 
 const IconAlert = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="55" height="55" viewBox="0 0 74 74" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
   </svg>
 );
 
+const IconExclamation = () => (
+  <svg width="53" height="53" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <line x1="12" y1="7" x2="12" y2="14"/>
+    <circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none"/>
+  </svg>
+);
+
 const IconCheck = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg width="55" height="55" viewBox="0 0 44 44" fill="none" stroke="currentColor" strokeWidth="2.5">
     <polyline points="20 6 9 17 4 12"/>
   </svg>
 );
@@ -159,6 +165,22 @@ function ForgotModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (v:
 }
 
 // ============================================
+// AVISO DE AYUDA SOBRE EL PIN
+// ============================================
+function PinHelpHint() {
+  return (
+    <div className="pl-help-hint">
+      <button type="button" className="pl-help-hint-btn" aria-label="Ayuda sobre el PIN de acceso">
+        <IconExclamation />
+      </button>
+      <div className="pl-help-hint-tooltip" role="tooltip">
+        El PIN de acceso debe ser proporcionado por el administrador del sistema.
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // PÁGINA PRINCIPAL DE LOGIN
 // ============================================
 export default function LoginPage() {
@@ -266,13 +288,10 @@ export default function LoginPage() {
       saveSession(data.token, data.expiresIn);
       setBanner({ type: "ok", msg: `¡Bienvenido, ${data.user.nombre}!` });
 
-      // Si el token había caducado pero la caja sigue abierta en BD,
-      // reanudamos en la última pantalla permitida para ese rol.
-      const resumePath = getResumePath(data.user.rol);
       setTimeout(() => {
-        navigate(resumePath);
+        navigate("/dashboard");
       }, 600);
-      
+
     } catch (err: unknown) {
       clearSession();
       const apiErr = err instanceof ApiError ? err : null;
@@ -290,8 +309,7 @@ export default function LoginPage() {
             const data = await apiLogin(selectedUser, pin, { forzarCierre: true });
             saveSession(data.token, data.expiresIn);
             setBanner({ type: "ok", msg: `¡Bienvenido, ${data.user.nombre}!` });
-            const resumePath = getResumePath(data.user.rol);
-            setTimeout(() => navigate(resumePath), 600);
+            setTimeout(() => navigate("/dashboard"), 600);
             return;
           } catch (forceErr: unknown) {
             clearSession();
@@ -543,6 +561,8 @@ export default function LoginPage() {
           </div>
         </main>
       </div>
+
+      <PinHelpHint />
 
       {showForgot && (
         <ForgotModal onClose={() => setShowForgot(false)} onSubmit={handleForgot} />
