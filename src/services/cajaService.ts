@@ -11,14 +11,27 @@ export async function fetchCajaById(cajaId: string): Promise<CajaApi> {
   return apiClient.get<CajaApi>(`/cajas/${cajaId}`);
 }
 
-/** Caja abierta del usuario (sin usar el endpoint 404 de /abierta/{id}). */
+export type CajaConColaboradoresApi = CajaApi & { colaboradores: ColaboradorApi[] };
+
+export async function fetchCajasAbiertasConColaboradores(): Promise<CajaConColaboradoresApi[]> {
+  return apiClient.get<CajaConColaboradoresApi[]>("/cajas/abiertas-con-colaboradores");
+}
+
+/** Caja abierta donde el usuario participa, ya sea como titular o como colaborador. */
 export async function fetchCajaAbierta(usuarioId: string): Promise<CajaApi | null> {
-  const cajas = await fetchCajas();
+  const cajas = await fetchCajasAbiertasConColaboradores();
   return (
     cajas.find(
-      (caja) => caja.usuario_id === usuarioId && caja.estado === "abierta"
+      (caja) =>
+        caja.usuario_id === usuarioId ||
+        caja.colaboradores.some((colaborador) => colaborador.usuario_id === usuarioId)
     ) ?? null
   );
+}
+
+export async function fetchCajaAbiertaActual(): Promise<CajaApi | null> {
+  const cajas = await fetchCajas();
+  return cajas.find((caja) => caja.estado === "abierta") ?? null;
 }
 
 export async function abrirCaja(usuarioId: string, montoApertura: number): Promise<CajaApi> {
@@ -42,6 +55,10 @@ export type GastoCajaApi = {
   created_at: string;
 };
 
+export async function fetchGastos(): Promise<GastoCajaApi[]> {
+  return apiClient.get<GastoCajaApi[]>("/gastos-caja");
+}
+
 export async function fetchGastosPorCaja(cajaId: string): Promise<GastoCajaApi[]> {
   return apiClient.get<GastoCajaApi[]>(`/gastos-caja/caja/${cajaId}`);
 }
@@ -54,4 +71,42 @@ export async function crearGastoCaja(payload: {
   categoria: string;
 }): Promise<GastoCajaApi> {
   return apiClient.post<GastoCajaApi>("/gastos-caja", payload);
+}
+
+export type SesionApi = {
+  id: string;
+  usuario_id: string;
+  caja_id: string;
+  rol_sesion: string;
+  inicio_at: string;
+  fin_at: string | null;
+};
+
+export type ColaboradorApi = {
+  sesion_id: string;
+  usuario_id: string;
+  caja_id: string;
+  rol_sesion: string;
+  inicio_at: string;
+  fin_at: string | null;
+  nombre_completo: string;
+  email: string;
+  rol: string;
+};
+
+export async function fetchColaboradores(cajaId: string): Promise<ColaboradorApi[]> {
+  const data = await apiClient.get<{ caja: CajaApi; colaboradores: ColaboradorApi[] }>(
+    `/cajas/${cajaId}/colaboradores`
+  );
+  return data.colaboradores;
+}
+
+export async function agregarColaborador(cajaId: string, usuarioId: string): Promise<SesionApi> {
+  return apiClient.post<SesionApi>(`/cajas/${cajaId}/colaboradores`, {
+    usuario_id: usuarioId,
+  });
+}
+
+export async function cerrarSesion(sesionId: string): Promise<SesionApi> {
+  return apiClient.post<SesionApi>(`/sesiones/${sesionId}/cerrar`, {});
 }

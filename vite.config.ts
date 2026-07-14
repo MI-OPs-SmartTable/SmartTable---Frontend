@@ -10,12 +10,16 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      host: true,
       port: frontendPort,
       strictPort: true,
       proxy: {
         '/api': {
           target: apiProxyTarget,
           changeOrigin: true,
+          // SSE (/api/events): evitar timeouts de proxy en conexiones largas
+          timeout: 0,
+          proxyTimeout: 0,
         },
       },
     },

@@ -4,9 +4,11 @@ const baseUrl = import.meta.env.VITE_API_URL as string | undefined;
 
 function resolveBaseUrl(): string {
   if (!baseUrl || !baseUrl.trim()) {
-    throw new Error(
-      "VITE_API_URL no está definida. Crea .env en la raíz del frontend tomando .env.example como guía"
-    );
+    // Fallback seguro para evitar romper toda la app cuando falta .env local.
+    if (typeof window !== "undefined") {
+      console.warn("VITE_API_URL no está definida; usando fallback '/api'.");
+    }
+    return "/api";
   }
   return baseUrl.replace(/\/$/, "");
 }
@@ -96,4 +98,92 @@ export const apiClient = {
   patch: <T>(path: string, body?: unknown, auth = true) =>
     request<T>("PATCH", path, { auth, body }),
   delete: <T>(path: string, auth = true) => request<T>("DELETE", path, { auth }),
+  /** Descarga un archivo binario (p. ej. Excel de reportes). */
+  getBlob: async (
+    path: string,
+    auth = true
+  ): Promise<{ blob: Blob; filename: string | null }> => {
+    const headers: Record<string, string> = {};
+    if (auth) {
+      const token = getToken();
+      if (!token) {
+        throw new ApiError("Sesión no iniciada", 401);
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const url = `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+    const response = await fetch(url, { method: "GET", headers });
+    if (!response.ok) {
+      if (response.status === 401) {
+        clearSession();
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
+      }
+      let message = `Error HTTP ${response.status}`;
+      try {
+        const data = await response.json();
+        if (data && typeof data.error === "string") message = data.error;
+      } catch {
+        /* ignore */
+      }
+      throw new ApiError(message, response.status);
+    }
+    const disposition = response.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    return {
+      blob: await response.blob(),
+      filename: match?.[1] ?? null,
+    };
+  },
+  /** Sube un cuerpo binario (p. ej. respaldo .db.gz) sin JSON. */
+  postBinary: async <T>(
+    path: string,
+    body: ArrayBuffer | Blob,
+    options: { auth?: boolean; contentType?: string; fileName?: string } = {}
+  ): Promise<T> => {
+    const { auth = true, contentType = "application/octet-stream", fileName } = options;
+    const headers: Record<string, string> = {
+      "Content-Type": contentType,
+    };
+    if (fileName) {
+      headers["X-Backup-Filename"] = encodeURIComponent(fileName);
+    }
+    if (auth) {
+      const token = getToken();
+      if (!token) {
+        throw new ApiError("Sesión no iniciada", 401);
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const url = `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+    const response = await fetch(url, { method: "POST", headers, body });
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    return parseResponse<T>(response);
+  },
+  /** Sube un archivo como multipart/form-data (p. ej. importación de Excel). */
+  postFormData: async <T>(
+    path: string,
+    formData: FormData,
+    options: { auth?: boolean } = {}
+  ): Promise<T> => {
+    const { auth = true } = options;
+    const headers: Record<string, string> = {};
+    // Sin Content-Type manual: el navegador fija el boundary del multipart.
+    if (auth) {
+      const token = getToken();
+      if (!token) {
+        throw new ApiError("Sesión no iniciada", 401);
+      }
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const url = `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+    const response = await fetch(url, { method: "POST", headers, body: formData });
+    if (response.status === 204) {
+      return undefined as T;
+    }
+    return parseResponse<T>(response);
+  },
 };

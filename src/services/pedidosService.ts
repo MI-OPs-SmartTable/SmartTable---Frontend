@@ -1,5 +1,5 @@
 import { apiClient } from "../lib/apiClient";
-import type { PedidoApi } from "./ventasService";
+import type { PedidoApi, PedidoItemPayload } from "./ventasService";
 
 export async function fetchPedidos(): Promise<PedidoApi[]> {
   return apiClient.get<PedidoApi[]>("/pedidos");
@@ -17,14 +17,14 @@ export async function crearPedido(payload: {
   usuario_id: string;
   caja_id: string;
   mesa_id?: string;
-  items: { variante_id: string; cantidad: number }[];
+  items: PedidoItemPayload[];
 }): Promise<PedidoApi> {
   return apiClient.post<PedidoApi>("/pedidos", payload);
 }
 
 export async function actualizarPedidoItems(
   pedidoId: string,
-  items: { variante_id: string; cantidad: number }[]
+  items: PedidoItemPayload[]
 ): Promise<PedidoApi> {
   return apiClient.put<PedidoApi>(`/pedidos/${pedidoId}`, { items });
 }

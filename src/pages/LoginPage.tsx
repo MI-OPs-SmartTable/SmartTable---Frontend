@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom"; 
 import { 
   saveSession, 
@@ -7,8 +7,11 @@ import {
   apiLogin, 
   apiForgotPassword,
 } from "../auth/authService";
+import { ApiError } from "../lib/apiClient";
 import { fetchUsuariosParaLogin } from "../services/authUsuariosService";
 import { mapAuthUsuarioToLoginOption } from "../lib/mappers/usuarioMapper";
+import { waitForBackendReady } from "../lib/waitForBackend";
+import RemoteAccessCard from "../components/RemoteAccessCard";
 import "../styles/LoginPage.css";
 
 // ============================================
@@ -31,13 +34,20 @@ const IconEye = ({ open }: { open: boolean }) => open ? (
 );
 
 const IconAlert = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="55" height="55" viewBox="0 0 74 74" fill="none" stroke="currentColor" strokeWidth="2">
     <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
   </svg>
 );
 
+const IconExclamation = () => (
+  <svg width="53" height="53" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+    <line x1="12" y1="7" x2="12" y2="14"/>
+    <circle cx="12" cy="17.5" r="1" fill="currentColor" stroke="none"/>
+  </svg>
+);
+
 const IconCheck = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+  <svg width="55" height="55" viewBox="0 0 44 44" fill="none" stroke="currentColor" strokeWidth="2.5">
     <polyline points="20 6 9 17 4 12"/>
   </svg>
 );
@@ -97,7 +107,7 @@ function ForgotModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (v:
   };
 
   return (
-    <div className="pl-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="pl-overlay">
       <div className="pl-modal">
         {!done ? (
           <>
@@ -155,6 +165,22 @@ function ForgotModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (v:
 }
 
 // ============================================
+// AVISO DE AYUDA SOBRE EL PIN
+// ============================================
+function PinHelpHint() {
+  return (
+    <div className="pl-help-hint">
+      <button type="button" className="pl-help-hint-btn" aria-label="Ayuda sobre el PIN de acceso">
+        <IconExclamation />
+      </button>
+      <div className="pl-help-hint-tooltip" role="tooltip">
+        El PIN de acceso debe ser proporcionado por el administrador del sistema.
+      </div>
+    </div>
+  );
+}
+
+// ============================================
 // PÁGINA PRINCIPAL DE LOGIN
 // ============================================
 export default function LoginPage() {
@@ -169,6 +195,8 @@ export default function LoginPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<{ id: string; username: string; nombre: string; rol: string }[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [usersError, setUsersError] = useState("");
+  const [loadingStatus, setLoadingStatus] = useState("Cargando usuarios…");
   const selectRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLInputElement>(null);
 
@@ -182,20 +210,45 @@ export default function LoginPage() {
     return roles[rol] || rol;
   };
 
-  // Cargar usuarios activos desde el backend
-  useEffect(() => {
-    const cargarUsuarios = async () => {
-      try {
-        setLoadingUsers(true);
-        const usuarios = await fetchUsuariosParaLogin();
-        setAvailableUsers(usuarios.map(mapAuthUsuarioToLoginOption));
-      } catch (error) {
-        console.error("Error cargando usuarios:", error);
-      } finally {
-        setLoadingUsers(false);
+  const cargarUsuarios = async (opts?: { waitForBackend?: boolean }) => {
+    setLoadingUsers(true);
+    setUsersError("");
+    setLoadingStatus(
+      opts?.waitForBackend
+        ? "Esperando al servidor…"
+        : "Cargando usuarios…"
+    );
+
+    try {
+      if (opts?.waitForBackend) {
+        const ready = await waitForBackendReady({ timeoutMs: 45000, intervalMs: 700 });
+        if (!ready) {
+          throw new Error("El servidor no respondió a tiempo");
+        }
       }
-    };
-    cargarUsuarios();
+
+      const usuarios = await fetchUsuariosParaLogin();
+      const mapped = usuarios.map(mapAuthUsuarioToLoginOption);
+      setAvailableUsers(mapped);
+      setUsersError("");
+      // Si solo hay un usuario, seleccionarlo para poder escribir el PIN de inmediato
+      if (mapped.length === 1) {
+        setSelectedUser(mapped[0].username);
+      }
+    } catch (error) {
+      console.error("Error cargando usuarios:", error);
+      setAvailableUsers([]);
+      setUsersError(
+        "No se pudo conectar con el servidor. Si acabas de restaurar un respaldo, espera unos segundos y reintenta."
+      );
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Cargar usuarios activos desde el backend (con reintento si aún reinicia)
+  useEffect(() => {
+    void cargarUsuarios({ waitForBackend: true });
   }, []);
 
   // Cerrar dropdown al hacer click fuera
@@ -234,14 +287,44 @@ export default function LoginPage() {
       const data = await apiLogin(selectedUser, pin);  
       saveSession(data.token, data.expiresIn);
       setBanner({ type: "ok", msg: `¡Bienvenido, ${data.user.nombre}!` });
-      
+
       setTimeout(() => {
         navigate("/dashboard");
-      }, 1000);
-      
-    } catch (err: any) {
+      }, 600);
+
+    } catch (err: unknown) {
       clearSession();
-      setBanner({ type: "err", msg: err.message || "❌ PIN incorrecto" });
+      const apiErr = err instanceof ApiError ? err : null;
+      const message = err instanceof Error ? err.message : "PIN incorrecto";
+      const isSessionElsewhere =
+        apiErr?.status === 409 &&
+        (message.includes("otro dispositivo") || message.includes("sesión activa"));
+
+      if (isSessionElsewhere) {
+        const forzar = window.confirm(
+          "Este usuario ya tiene una sesión activa en otro dispositivo.\n\n¿Cerrar esa sesión e iniciar aquí?"
+        );
+        if (forzar) {
+          try {
+            const data = await apiLogin(selectedUser, pin, { forzarCierre: true });
+            saveSession(data.token, data.expiresIn);
+            setBanner({ type: "ok", msg: `¡Bienvenido, ${data.user.nombre}!` });
+            setTimeout(() => navigate("/dashboard"), 600);
+            return;
+          } catch (forceErr: unknown) {
+            clearSession();
+            setBanner({
+              type: "err",
+              msg: forceErr instanceof Error ? forceErr.message : "No se pudo forzar el inicio de sesión",
+            });
+            setPin("");
+            pinRef.current?.focus();
+            return;
+          }
+        }
+      }
+
+      setBanner({ type: "err", msg: message || "PIN incorrecto" });
       setPin("");
       pinRef.current?.focus();
     } finally {
@@ -277,7 +360,50 @@ export default function LoginPage() {
         <div className="pl-right">
           <div className="pl-form-wrap" style={{ textAlign: "center" }}>
             <Spinner />
-            <p style={{ marginTop: 20, color: "var(--ash)" }}>Cargando...</p>
+            <p style={{ marginTop: 20, color: "var(--ash)" }}>{loadingStatus}</p>
+            <div style={{ marginTop: 24, textAlign: "left" }}>
+              <RemoteAccessCard />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (usersError && availableUsers.length === 0) {
+    return (
+      <div className="pl-root">
+        <div className="pl-left">
+          <div className="pl-left-bg" />
+          <div className="pl-brand">
+            <div className="pl-brand-mark"><IconPOS /></div>
+            <div>
+              <div className="pl-brand-name">SmarTable</div>
+              <div className="pl-brand-tag">Sistema de Punto de Venta</div>
+            </div>
+          </div>
+          <div className="pl-hero">
+            <div className="pl-hero-label">Acceso al sistema</div>
+            <h1 className="pl-hero-title">Control total<br />de cada <em>venta</em></h1>
+            <p className="pl-hero-sub">Gestiona productos, registra ventas y controla tu caja de forma rápida, sencilla y eficiente desde un solo lugar</p>
+          </div>
+        </div>
+        <div className="pl-right">
+          <div className="pl-form-wrap" style={{ textAlign: "center" }}>
+            <div className="pl-banner err" style={{ textAlign: "left", marginBottom: 16 }}>
+              <IconAlert />
+              {usersError}
+            </div>
+            <button
+              type="button"
+              className="pl-submit"
+              onClick={() => void cargarUsuarios({ waitForBackend: true })}
+            >
+              Reintentar
+            </button>
+            <div style={{ marginTop: 24, textAlign: "left" }}>
+              <RemoteAccessCard />
+            </div>
           </div>
         </div>
       </div>
@@ -377,32 +503,43 @@ export default function LoginPage() {
                     ref={pinRef}
                     id="pos-pin"
                     className={`pl-input${fieldErrs.pin ? " err" : ""}`}
-                    type={showPin ? "text" : "password"}
+                    type="text"
                     inputMode="numeric"
-                    pattern="\d*"
+                    autoComplete="one-time-code"
                     maxLength={4}
-                    placeholder="****"
-                    autoComplete="off"
+                    placeholder={selectedUser ? "····" : "Elige un usuario primero"}
                     value={pin}
-                    disabled={loading || !selectedUser}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, "").slice(0, 4);
                       setPin(value);
-                      setFieldErrs(p => ({...p, pin: undefined}));
+                      setFieldErrs((p) => ({ ...p, pin: undefined }));
                     }}
-                    style={{ paddingRight: 44, textAlign: "center", letterSpacing: "4px", fontSize: "18px" }}
+                    style={{
+                      paddingRight: 44,
+                      textAlign: "center",
+                      letterSpacing: "4px",
+                      fontSize: "18px",
+                      // Evita el bug de type=password en Electron con input controlado
+                      WebkitTextSecurity: showPin ? "none" : "disc",
+                    } as CSSProperties}
                   />
                   <span className="pl-input-icon"><IconLock /></span>
                   <button
                     type="button"
                     className="pl-eye"
                     tabIndex={-1}
-                    onClick={() => setShowPin(v => !v)}
-                    disabled={!selectedUser}
+                    onClick={() => setShowPin((v) => !v)}
+                    disabled={loading}
+                    aria-label={showPin ? "Ocultar PIN" : "Mostrar PIN"}
                   >
                     <IconEye open={showPin} />
                   </button>
                 </div>
+                {!selectedUser && (
+                  <div className="pl-field-err" style={{ color: "var(--ash)" }}>
+                    Selecciona un usuario para continuar
+                  </div>
+                )}
                 {fieldErrs.pin && (
                   <div className="pl-field-err"><IconAlert />{fieldErrs.pin}</div>
                 )}
@@ -416,12 +553,16 @@ export default function LoginPage() {
               </button>
             </form>
 
+            <RemoteAccessCard />
+
             <button className="pl-forgot" type="button" onClick={() => setShowForgot(true)}>
               ¿Olvidaste tu contraseña?
             </button>
           </div>
         </main>
       </div>
+
+      <PinHelpHint />
 
       {showForgot && (
         <ForgotModal onClose={() => setShowForgot(false)} onSubmit={handleForgot} />

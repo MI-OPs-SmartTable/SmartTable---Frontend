@@ -728,21 +728,20 @@ body {
 
 .cfg-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   border-bottom: 2px solid #f0f0f0;
   margin-bottom: 24px;
   max-width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  overflow: visible;
 }
 
 .cfg-tab {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 20px;
+  padding: 12px 18px;
   border: none;
   background: transparent;
   color: #6b7280;
@@ -752,8 +751,9 @@ body {
   border-bottom: 2.5px solid transparent;
   margin-bottom: -2px;
   transition: all 0.15s ease;
-  flex-shrink: 0;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .cfg-tab:hover {
@@ -979,15 +979,41 @@ body {
    ============================================ */
 
 @media (max-width: 900px) {
+  .cfg-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    border-bottom: none;
+    margin-bottom: 20px;
+  }
+
   .cfg-tab {
-    padding: 10px 14px;
+    padding: 10px 12px;
     font-size: 13px;
+    margin-bottom: 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .cfg-tab:hover {
+    border-radius: 10px;
+  }
+
+  .cfg-tab.active {
+    border-color: #F97316;
+    background: #fff7ed;
+    border-bottom-color: #F97316;
   }
 }
 
 @media (max-width: 640px) {
   .cfg-root {
     padding: 16px;
+    overflow-x: hidden;
   }
 
   .cfg-title {
@@ -995,9 +1021,14 @@ body {
   }
 
   .cfg-tab {
-    padding: 10px 12px;
+    padding: 10px 8px;
     font-size: 12px;
     gap: 6px;
+  }
+
+  .cfg-tab-icon svg {
+    width: 16px;
+    height: 16px;
   }
 
   .cfg-card {

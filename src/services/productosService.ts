@@ -24,7 +24,7 @@ export async function fetchCatalogo(): Promise<CatalogoItem[]> {
 }
 
 export async function fetchCategorias(): Promise<Categoria[]> {
-  const data = await apiClient.get<{ id: string; nombre: string }[]>("/categorias");
+  const data = await apiClient.get<{ id: string; nombre: string; emoji?: string | null }[]>("/categorias");
   return data.map((c) => enrichCategoria(mapCategoriaFromApi(c)));
 }
 
@@ -39,11 +39,12 @@ export async function crearProducto(producto: Omit<Producto, "id">): Promise<Pro
 }
 
 export async function actualizarProducto(id: string, producto: Partial<Producto>): Promise<Producto> {
-  await apiClient.put<ApiRow>(`/productos/${id}`, mapProductoToUpdateApi(producto));
+  const updated = await apiClient.put<ApiRow>(`/productos/${id}`, mapProductoToUpdateApi(producto));
+  // PUT devuelve producto + variantes; reconsultar detalle para traer receta/precio de catálogo
   const list = await apiClient.get<ApiRow[]>("/productos?detalle=1");
   const found = list.find((p) => p.id === id);
-  if (!found) throw new Error("Producto no encontrado tras actualizar");
-  return mapProductoFromApi(found);
+  if (found) return mapProductoFromApi(found);
+  return mapProductoFromApi(updated);
 }
 
 export async function eliminarProducto(id: string): Promise<void> {

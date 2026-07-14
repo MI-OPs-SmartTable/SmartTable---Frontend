@@ -1,5 +1,6 @@
-import type { CierreCaja } from "../../pages/dashboard/types/caja.types";
+import type { CierreCaja, GastoCierreItem } from "../../pages/dashboard/types/caja.types";
 import type { VentaApi } from "../../services/ventasService";
+import { parseLocalDateTime } from "../dateTime";
 
 type ApiCaja = {
   id: string;
@@ -13,18 +14,16 @@ type ApiCaja = {
 
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
 
-function parseSqliteDate(value: string): Date {
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
-  const d = new Date(normalized);
-  return Number.isNaN(d.getTime()) ? new Date() : d;
-}
-
 export function mapCajaHistorialItem(
   caja: ApiCaja,
   usuarioNombre: string,
-  ventasCaja: VentaApi[]
+  ventasCaja: VentaApi[],
+  gastosCaja: GastoCierreItem[] = []
 ): CierreCaja {
-  const cierreAt = caja.cierre_at ? parseSqliteDate(caja.cierre_at) : parseSqliteDate(caja.apertura_at);
+  const cierreAt = caja.cierre_at
+    ? parseLocalDateTime(caja.cierre_at)
+    : parseLocalDateTime(caja.apertura_at);
+
   const fecha = cierreAt.toLocaleDateString("es-CO", {
     day: "numeric",
     month: "long",
@@ -36,23 +35,34 @@ export function mapCajaHistorialItem(
     hour12: true,
   });
 
-  const total = ventasCaja.reduce((sum, v) => sum + Number(v.total), 0);
+  const baseInicial = Number(caja.monto_apertura ?? 0);
+  const totalVentas = ventasCaja.reduce((sum, v) => sum + Number(v.total), 0);
   const montoEfectivo = ventasCaja.reduce((sum, v) => sum + Number(v.monto_efectivo), 0);
   const montoTransferencia = ventasCaja.reduce(
     (sum, v) => sum + Number(v.monto_transferencia),
     0
   );
+  const totalGastos = gastosCaja.reduce((sum, g) => sum + Number(g.monto), 0);
+
+  const y = cierreAt.getFullYear();
+  const m = String(cierreAt.getMonth() + 1).padStart(2, "0");
+  const d = String(cierreAt.getDate()).padStart(2, "0");
 
   return {
     id: caja.id,
     fecha,
-    fechaRaw: cierreAt.toISOString().split("T")[0],
+    fechaRaw: `${y}-${m}-${d}`,
     diaSemana: DIAS[cierreAt.getDay()],
     cerradoPor: usuarioNombre,
     hora,
-    total,
+    total: totalVentas,
+    baseInicial,
+    totalVentas,
+    totalGastos,
+    neto: baseInicial + totalVentas - totalGastos,
     montoEfectivo,
     montoTransferencia,
+    gastos: gastosCaja,
   };
 }
 

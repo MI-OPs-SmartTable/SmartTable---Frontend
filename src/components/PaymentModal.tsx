@@ -1,11 +1,14 @@
 import { useMemo } from "react";
 import { fmt } from "../lib/formatMoney";
 import type { MedioPagoApi } from "../services/mediosPagoService";
+import type { PedidoItemApi } from "../services/ventasService";
 
 export type MetodoPago = "efectivo" | "transferencia" | "mixto";
 
 type PaymentModalProps = {
   total: number;
+  pedidoTitulo?: string;
+  pedidoItems?: PedidoItemApi[];
   medios: MedioPagoApi[];
   metodo: MetodoPago;
   onMetodoChange: (metodo: MetodoPago) => void;
@@ -25,6 +28,8 @@ type PaymentModalProps = {
 
 export default function PaymentModal({
   total,
+  pedidoTitulo,
+  pedidoItems,
   medios,
   metodo,
   onMetodoChange,
@@ -67,8 +72,10 @@ export default function PaymentModal({
     }
   };
 
+  const resumenItems = pedidoItems ?? [];
+
   return (
-    <div className="caja-modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="caja-modal-overlay">
       <div className="caja-modal ventas-pago-modal">
         <div className="caja-modal-header">
           <div className="caja-modal-title">Cobrar pedido</div>
@@ -76,6 +83,31 @@ export default function PaymentModal({
         </div>
 
         <div className="caja-modal-body">
+          <div className="ventas-pago-pedido-resumen">
+            <div className="ventas-pago-pedido-resumen-head">
+              <div className="ventas-pago-pedido-resumen-title">{pedidoTitulo ?? "Pedido a cobrar"}</div>
+              <div className="ventas-pago-pedido-resumen-count">{resumenItems.length} producto{resumenItems.length === 1 ? "" : "s"}</div>
+            </div>
+            {resumenItems.length > 0 && (
+              <div className="ventas-pago-pedido-items">
+                {resumenItems.map((item) => {
+                  const nota = item.nota?.trim();
+                  return (
+                    <div key={item.id} className="ventas-pago-pedido-item">
+                      <div className="ventas-pago-pedido-item-main">
+                        <div className="ventas-pago-pedido-item-line">
+                          <span>{item.cantidad} × {item.variante_nombre ?? "Producto"}</span>
+                          <strong>{fmt(Number(item.cantidad) * Number(item.precio_unitario))}</strong>
+                        </div>
+                        {nota && <div className="ventas-pago-pedido-item-nota">{nota}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className="ventas-pago-resumen">
             <div className="ventas-pago-resumen-row total">
               <span>Total a pagar</span>

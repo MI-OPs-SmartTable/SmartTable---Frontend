@@ -62,14 +62,24 @@ export function validatePin(pin: string) {
   return errs;
 }
 
-export async function apiLogin(username: string, pin: string): Promise<LoginResponse> {
+export async function apiLogin(
+  username: string,
+  pin: string,
+  options?: { forzarCierre?: boolean }
+): Promise<LoginResponse> {
   const data = await apiClient.post<{
     token: string;
     expiresIn?: number;
     usuario?: { id?: string; nombre_completo?: string; rol?: string };
+    code?: string;
+    puede_forzar?: boolean;
   }>(
     "/auth/login",
-    { nombre_completo: username, pin },
+    {
+      nombre_completo: username,
+      pin,
+      ...(options?.forzarCierre ? { forzar_cierre: true } : {}),
+    },
     false
   );
 

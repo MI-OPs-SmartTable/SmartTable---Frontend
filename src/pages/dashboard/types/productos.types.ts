@@ -37,6 +37,7 @@ export type FormState = {
   categoriaId: string;
   activo: boolean;
   insumos: ProductoInsumo[];
+  emoji: string;
 };
 
-export type FormErrors = { nombre?: string; precio?: string; categoriaId?: string };
+export type FormErrors = { nombre?: string; precio?: string; categoriaId?: string; insumos?: string };
