@@ -2,7 +2,7 @@
 // MODAL CREAR/EDITAR USUARIO
 
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import type { Usuario, FormState, FormErrors } from "../pages/dashboard/types/config.types";
 import { ROLES } from "../data/seedConfig";
 
@@ -181,7 +181,9 @@ export default function CrearEditarUsuario({ editTarget, usuarios, onClose, onSa
               </label>
               <input
                 className={`cfg-input${errors.pin ? " err" : ""}`}
-                type="password"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 placeholder="1234"
                 maxLength={4}
                 value={form.pin}
@@ -189,6 +191,7 @@ export default function CrearEditarUsuario({ editTarget, usuarios, onClose, onSa
                   setForm((prev) => ({ ...prev, pin: e.target.value.replace(/\D/g, "") }));
                   setErrors((prev) => ({ ...prev, pin: undefined }));
                 }}
+                style={{ WebkitTextSecurity: "disc" } as CSSProperties}
               />
               {errors.pin && (
                 <div className="cfg-field-err">

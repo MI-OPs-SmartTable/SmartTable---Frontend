@@ -491,25 +491,10 @@ export default function LoginPage() {
                     maxLength={4}
                     placeholder={selectedUser ? "····" : "Elige un usuario primero"}
                     value={pin}
-                    disabled={loading}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, "").slice(0, 4);
                       setPin(value);
                       setFieldErrs((p) => ({ ...p, pin: undefined }));
-                    }}
-                    onKeyDown={(e) => {
-                      // Permitir control/navegación; bloquear letras
-                      if (
-                        e.ctrlKey ||
-                        e.metaKey ||
-                        e.altKey ||
-                        ["Backspace", "Delete", "Tab", "Enter", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)
-                      ) {
-                        return;
-                      }
-                      if (!/^\d$/.test(e.key)) {
-                        e.preventDefault();
-                      }
                     }}
                     style={{
                       paddingRight: 44,
