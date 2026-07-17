@@ -1,5 +1,7 @@
 {
   "name": "smarttable--frontend",
+  "description": "SmartTable - POS System",
+  "author": "SmartTable Team",
   "private": true,
   "version": "0.0.0",
   "type": "module",
