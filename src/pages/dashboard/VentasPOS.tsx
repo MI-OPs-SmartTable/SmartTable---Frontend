@@ -176,26 +176,33 @@ export default function VentasPOS() {
     setLoading(true);
     setError("");
     try {
-      const [cat, cats, ubi, mes, med, stock] = await Promise.all([
+      const [cat, cats, ubi, mes, stock] = await Promise.all([
         fetchCatalogo(),
         fetchCategorias(),
         ubicacionesService.getAll() as Promise<UbicacionApi[]>,
         mesasService.getAll() as Promise<MesaApi[]>,
-        fetchMediosPago(),
         fetchInsumosStockBajo(),
       ]);
       setCatalogo(cat);
       setCategorias(cats);
       setUbicaciones(ubi);
       setMesas(mes);
-      setMedios(med);
       setStockBajo(stock);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al cargar catálogo");
     } finally {
       setLoading(false);
     }
-  }, []);
+
+    // Medios de pago solo hace falta para cobrar; mesero no tiene ese permiso en el backend.
+    if (usuario?.rol !== "mesero") {
+      try {
+        setMedios(await fetchMediosPago());
+      } catch {
+        /* no crítico para listar/crear pedidos */
+      }
+    }
+  }, [usuario?.rol]);
 
   useEffect(() => {
     loadBase();
@@ -710,9 +717,15 @@ export default function VentasPOS() {
                           <div className="ventas-pedido-total">{fmt(total)}</div>
                         </div>
                         <div className="ventas-pedido-actions">
-                          <button type="button" className="ventas-pedido-btn" onClick={() => seleccionarPedido(pedido)}>Editar</button>
-                          <button type="button" className="ventas-pedido-btn danger" onClick={() => eliminarPedido(pedido.id)}>Eliminar</button>
-                          <button type="button" className="ventas-pedido-btn primary" onClick={() => abrirPago(pedido)}>Cobrar</button>
+                          {(usuario?.rol !== "mesero" || pedido.usuario_id === usuario?.id) && (
+                            <>
+                              <button type="button" className="ventas-pedido-btn" onClick={() => seleccionarPedido(pedido)}>Editar</button>
+                              <button type="button" className="ventas-pedido-btn danger" onClick={() => eliminarPedido(pedido.id)}>Eliminar</button>
+                            </>
+                          )}
+                          {usuario?.rol !== "mesero" && (
+                            <button type="button" className="ventas-pedido-btn primary" onClick={() => abrirPago(pedido)}>Cobrar</button>
+                          )}
                         </div>
                       </div>
                     );

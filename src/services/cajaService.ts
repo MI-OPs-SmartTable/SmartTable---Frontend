@@ -1,4 +1,4 @@
-import { apiClient } from "../lib/apiClient";
+import { apiClient, ApiError } from "../lib/apiClient";
 import type { ApiCajaRecord } from "../lib/mappers/cajaMapper";
 
 export type CajaApi = ApiCajaRecord;
@@ -17,16 +17,20 @@ export async function fetchCajasAbiertasConColaboradores(): Promise<CajaConColab
   return apiClient.get<CajaConColaboradoresApi[]>("/cajas/abiertas-con-colaboradores");
 }
 
-/** Caja abierta donde el usuario participa, ya sea como titular o como colaborador. */
+/**
+ * Caja abierta donde el usuario participa, ya sea como titular o como colaborador.
+ * Usa /cajas/abierta/:usuario_id (habilitada para mesero) en vez del listado
+ * admin-only /cajas/abiertas-con-colaboradores.
+ */
 export async function fetchCajaAbierta(usuarioId: string): Promise<CajaApi | null> {
-  const cajas = await fetchCajasAbiertasConColaboradores();
-  return (
-    cajas.find(
-      (caja) =>
-        caja.usuario_id === usuarioId ||
-        caja.colaboradores.some((colaborador) => colaborador.usuario_id === usuarioId)
-    ) ?? null
-  );
+  try {
+    return await apiClient.get<CajaApi>(`/cajas/abierta/${usuarioId}`);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function fetchCajaAbiertaActual(): Promise<CajaApi | null> {
